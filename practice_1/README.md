@@ -173,8 +173,8 @@ How to run nodes:
 
 ```
 <launch>
-    <node pkg="practice_1" name="publisher" type="publisher.py" output="screen" required="true"/>
-    <node pkg="practice_1" name="subscriber" type="subscriber.py" output="screen" required="true"/>
+    <node pkg="autoware_mini_practice_solutions" name="publisher" type="publisher.py" output="screen" required="true"/>
+    <node pkg="autoware_mini_practice_solutions" name="subscriber" type="subscriber.py" output="screen" required="true"/>
 </launch>
 ```
 
