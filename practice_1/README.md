@@ -130,7 +130,7 @@ Some essential files are needed to define the package. These files could be crea
    - `CMakeLists.txt` - build instructions
 
 ##### Continue with ROS package creation
-5. `cd ~/autoware_mini_practice/src` - go to that folder (it should already contain folder `practice_1`)
+5. `cd ~/autoware_mini_practice/src` - go to that folder (it should already contain folder `autoware_mini_practice_solutions`)
 6. `catkin create pkg autoware_mini_practice_solutions --system-deps rospy std_msgs` - will create a package (namely the two essential files) and adds `rospy` and `std_msgs` as dependencies
 7. Open and see the contents of `package.xml` and `CMakeLists.txt` files, edit metadata in `package.xml`
 8. Optional: clean these files from unnecessary comments (all commented-out blocks)
@@ -179,7 +179,7 @@ How to run nodes:
 ```
 
 ##### Validation
-* Run in terminal: `roslaunch practice_1 practice_1.launch`
+* Run in terminal: `roslaunch autoware_mini_practice_solutions practice_1.launch`
 * "Hello world!" should be printed like after part 2.
 
 
