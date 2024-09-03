@@ -93,7 +93,7 @@ rospy.spin()
 
 ## 3. Create a workspace and a package
 
-We needed three console windows to run the roscore and two nodes in part 2. What if our system grows bigger - it would be a nightmare to launch the nodes separately! We could run all of them with one command if we added nodes into a launch file. To do that, we first need to organize our files into the catkin workspace ([catkin](https://wiki.ros.org/catkin/conceptual_overview) is the ROS build system for workspaces and packages). Inside the Catkin workspace, we will create smaller ROS packages. In our case, all the practices will be separate packages. All packages belonging to the same catkin workspace will be built together.
+We needed three console windows to run the roscore and two nodes in part 2. What if our system grows bigger - it would be a nightmare to launch the nodes separately! We could run all of them with one command if we added nodes into a launch file. To do that, we first need to organize our files into the catkin workspace ([catkin](https://wiki.ros.org/catkin/conceptual_overview) is the ROS build system for workspaces and packages). Inside the Catkin workspace, we will create smaller ROS packages. All packages belonging to the same catkin workspace will be built together.
 
 For building and creating workspace and packages we will be using [catkin_tools](https://catkin-tools.readthedocs.io/en/latest/index.html)
 
@@ -116,7 +116,8 @@ For building and creating workspace and packages we will be using [catkin_tools]
      - `git add README.md`
      - `git commit -m “Init”`
      - `git branch -M main`
-     - `git remote add origin git@github.com:<your_github_username>/autoware_mini_practice_solutions.git `
+     - `git remote add origin git@github.com:<your_github_username>/autoware_mini_practice_solutions.git`
+     - `git push -u origin main`
 
 
 ##### About packages
@@ -135,11 +136,9 @@ Some essential files are needed to define the package. These files could be crea
 7. Open and see the contents of `package.xml` and `CMakeLists.txt` files, edit metadata in `package.xml`
 8. Optional: clean these files from unnecessary comments (all commented-out blocks)
 9. Create folder `nodes` under the `~/autoware_mini_practice/src/autoware_mini_practice_solutions` and move your previously created subscriber and publisher nodes there
-10. Optional: `cd ~/autoware_mini_practice`
-11. `catkin build` - observe the output and see if package `autoware_mini_practice_solutions` is found and successfully built along with others
-12. `source /devel/setup.bash` - source again your workspace since it is changed
 
 ##### Validation
+* `cd ~/autoware_mini_practice`
 * build process (`catkin build`) should be without errors
 * `catkin list` - should list your packages, including `autoware_mini_practice_solutions`
    - `rospack list` - should display your packages among a lot of others - displays all known packages (sourced) available to ROS
@@ -232,4 +231,4 @@ ROS nodes can be reused - for example, we can run several instances of the publi
 * `rosnode list` - will list all running nodes
 * `rostopic list` - see all the topics
 * `rostopic info /message` - see subscribers and publishers
-* Make sure you have pushed your changes to git.
+* Make sure you have pushed your changes to git, and send an email with the link to your repository to [me](mailto:dmytro.zabolotnii@ut.ee)
