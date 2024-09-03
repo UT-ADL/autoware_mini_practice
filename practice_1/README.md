@@ -182,7 +182,7 @@ How to run nodes:
 * "Hello world!" should be printed like after part 2.
 
 
-## 5. Parameters in launch files and nodes
+## 6. Parameters in launch files and nodes
 
 ##### Parameters in launch file
 What if we would like to publish another message instead of "Hello World!". Instead of replacing it in the code, we should turn it into the node's parameter that is acquired when the node starts. We can add reading the parameter values to nodes from the ROS parameter server, but before, something has to add the value there. It can be done with launch file [param tag](https://wiki.ros.org/roslaunch/XML/param):
@@ -214,7 +214,7 @@ message = rospy.get_param('~message', 'Hello World!')
 * New message should be printed out
 
 
-## 6. Reusing the node
+## 7. Reusing the node
 ROS nodes can be reused - for example, we can run several instances of the publisher node with different parameters. We can do this with the help of the launch file. Let's create two publishers publishing on the same topic but with different rates and messages.
 
 ##### Instructions
