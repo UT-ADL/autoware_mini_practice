@@ -20,6 +20,11 @@ From this practice we will be providing some supporting files in front that you 
 * [rviz/practice_2.rviz](https://owncloud.ut.ee/owncloud/s/is8xeZNEQzFMcJD) - RViz config file for visualizing the topics. RViz is a 3D visualization tool for ROS.
 * [config/localization.yaml](https://owncloud.ut.ee/owncloud/s/5C8FCFJRRTQgbXP) - some parameter values for localizer. Instead of using launch file to set parameter values a file can be loaded where the parameters are listed.
 
+If you want to perform and/or validate this and next practices on your own hardware you need to do some additional steps:
+
+* Follow all steps to install [autoware_mini](https://github.com/UT-ADL/autoware_mini)
+* Download necessary [.bag files](https://owncloud.ut.ee/owncloud/s/AC8FHNNqG2ye95e) for practices and unpack files in `autoware_mini/data/bags`
+
 ### Expected outcome
 
 * Understanding what does it mean to localize a car on the map
@@ -74,7 +79,7 @@ We will create a [subscriber node](https://wiki.ros.org/ROS/Tutorials/WritingPub
       - organize the code in meaningful groups in class init method 
       - other code should be inside callbacks and functions
    - Go through the necessary imports and note different message types
-   - Notice that this time we don't use prefix for parameter names. This is because these parameters can be potentially used also from other nodes. Previously we used `~` prefix that denotes node private parameters. More information on resolving parameter names can be found [here](http://wiki.ros.org/Names#Resolving).
+   - Notice that this time we don't use prefix for parameter names. This is because these parameters can be potentially used from other nodes. Previously we used `~` prefix that denotes node private parameters. More information on resolving parameter names can be found [here](http://wiki.ros.org/Names#Resolving).
    - See how subscribers and publishers are created
 3. There is an empty callback: `transform_coordinates` - replace `pass` with printing the coordinates `print(msg.latitude, msg.longitude)`
 
