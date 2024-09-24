@@ -21,10 +21,10 @@ This node will make it possible to plan a path on the map. So, instead of loadin
 ##### Instructions
 1. Create a new file, `lanelet2_global_planner.py` under `nodes/planning/global`
 2. When creating the node, follow the class-based structure (you can take hints from previous practice or other provided nodes)
-3. Add the code for lanelet2 map loading; you can use the code from `lanelet2_map_visualizer` node in `autoware_mini` package as an example
+3. Add the code for lanelet2 map loading; you can use the code from `src/helpers/lanelet2.py` in `autoware_mini` package as an example
    - import necessary classes from the lanelet2 library
-   - read in necessary ros parameters from `localization.yaml` and `lanelet2_map_name` coming from the launch file
-   - add the code that loads the [lanelet2 map](/nodes/planning/visualization/lanelet2_map_visualizer.py#L46-L57)
+   - read in necessary ros parameters from `localization.yaml` (see the function parameters in example code) and `lanelet2_map_name` coming from the launch file
+   - add the code that loads the lanelet2 map
 
 ```
 # All these imports from lanelet2 library should be sufficient
