@@ -195,13 +195,9 @@ Publishing an empty path will cause problems for the follower, so you will need 
    - Assumes that the goal point is stored
 3. Add a loginfo message that the goal has been reached when it happens and the path has been cleared.
 4. run `roslaunch autoware_mini_practice_solutions practice_4.launch lanelet2_map_name:=tartu_large.osm` - see what happens when the goal has been reached - observe the console output.
-   - Something goes wrong in the pure_pursuit_follower!
-   - It seems that it can not handle receiving an empty path message
-   - Try to understand what happens!
-5. Fix the problem in `pure_pursuit_follower`
-   - when empty path is received you need to stop the car and the only option is to use `vehicle_cmd`
-   - what should be published to the vehicle_cmd that will make a vehicle come to a stop?
-
+   - Make sure that your follower can handle an empty path message if it couldn't previously
+   - When empty path is received you need to stop the car and the only option is to use `vehicle_cmd`
+   - What should be published to the vehicle_cmd that will make a vehicle come to a stop?
 
 ##### Validation
 * run `roslaunch autoware_mini_practice_solutions practice_4.launch lanelet2_map_name:=tartu_large.osm`
