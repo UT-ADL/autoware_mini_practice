@@ -13,7 +13,7 @@ This practice focuses on obstacle detection. The raw lidar point cloud is taken 
 
 To do that, You have to finalize two nodes:
 * `points_clusterer.py` - creates `sensor_msgs/PointCloud2` message with clustered points so that the message type will remain the same as in input.
-* `cluster_detector.py` - converts clustered point cloud to [`autoware_msg/DetectedObjectArray`](https://github.com/autowarefoundation/autoware_ai_messages/blob/master/autoware_msgs/msg/DetectedObjectArray.msg) that contains detected objects. The file itself with an empty callback is given.
+* `cluster_detector.py` - converts clustered point cloud to [`autoware_msg/DetectedObjectArray`](https://github.com/autowarefoundation/autoware_ai_messages/blob/master/autoware_msgs/msg/DetectedObjectArray.msg) that contains detected objects. The code itself with an empty callback is given.
 
 
 #### Additional files
@@ -31,14 +31,12 @@ To do that, You have to finalize two nodes:
 ## 1. Preparation
 
 1. run `roslaunch autoware_mini_practice_solutions practice_5.launch use_detection:=true`
-   - there should be no errors in the console
    - visualization in rviz should show a red arrow (location of current_pose), lanelet2 map, and lidar point cloud around the current pose
    - You should be able to set the goal point (note your log message about receiving the goal). Hint: if you hit space in the console window where you launched `practice_5.launch`, the rosbag play goes into a pause, and it might be easier to set the goal point.
    - If the ego vehicle reaches the goal point, the path should be cleared, and the information message should be displayed.
    - an error message should be in the console saying that `points_clusterer` and `cluster_detector` nodes were not found (we will create the nodes later)
    - run `rqt` and explore the node graph (switch to `Nodes/Topics (all)`) - see how nodes and topics are connected.
       - Start from `/player`. It publishes `/lidar_center/points_raw` that goes to ground removal, and it publishes two topics: `points_no_ground` and `points_ground`, but nothing is using these - that is where your node should follow
-      - Find `cluster_detector` node and with `rosnode info`, find the topic it is publishing and echo it. Is it empty, or is it even published?
    - In rqt, add from the menu `Plugins/Visualization/TF Tree` - you should see available frames (map, base_link_lidar_center, ...) and how they are connected. Arrows connecting the frames represent the transforms; you can see what is publishing it next to them.
 
    ![ros_grpah_tf_tree](images/ros_graph_tf_tree.png)
