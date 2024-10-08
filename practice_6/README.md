@@ -10,7 +10,7 @@ For this exercise, the local planner will not receive any lateral control tasks,
 - [launch/practice_6_bag.launch](https://owncloud.ut.ee/owncloud/s/5s26z4y7pKJFQrJ) - first launch file that reads data from bag that should run without errors at the end of the practice
 - [launch/practice_6_sim.launch](https://owncloud.ut.ee/owncloud/s/mSrEqyQAXjKkARN) - second launch file that creates simulation that should run without errors at the end of the practice
 - [rviz/practice_6.rviz](https://owncloud.ut.ee/owncloud/s/7KWfDWjwHSjFjDQ) - RViz config file for visualizing the topics.
-
+- [config/planning.yaml](https://owncloud.ut.ee/owncloud/s/c7wCWbHJpqHGdPb) - Updated config file, overwrite your local config file, don't forget to set your own custom values back.
 
 ### Expected outcome
 * Understanding of how the ego vehicle reacts to the obstacles (combination of distance and speed) - obstacle-causing minimum target speed will dictate the ego vehicle speed.
