@@ -1,0 +1,143 @@
+<?xml version="1.0"?>
+<launch>
+    
+    <arg name="bag_file"                default="2023-05-18-14-26-36_sensors_tfl_bot_aed_with_set_dest.bag" />
+    <arg name="speed_limit"             default="40" />
+    <arg name="lanelet2_map_name"       default="tartu_demo.osm" />
+    <arg name="use_localization"        default="true" />
+    <arg name="use_planning"            default="true" />
+    <arg name="use_detection"           default="true" />
+    <arg name="use_control"             default="true" />
+    <arg name="use_tracking"            default="false" />
+    <arg name="use_local_planner"       default="true" />
+    <arg name="synchronization_method"  default="approximate"   doc="approximate or exact" />
+    <arg name="enable_object_checker"   default="true"          doc="enable object checker" />
+    <arg name="enable_goal_checker"     default="false"         doc="enable goal checker" />
+    <arg name="enable_auto_stop_checker" default="true"         doc="enable auto stop checker" />
+
+
+    <!-- Use simulation time from bag -->
+    <param name="/use_sim_time" value="true" />
+
+    <!-- Play back bag -->
+    <node pkg="rosbag" type="play" name="player" required="true" args="$(find autoware_mini)/data/bags/$(arg bag_file) --clock --queue=1" />
+
+     <!-- Localization -->
+    <group ns="localization">
+        <node pkg="autoware_mini_practice_solutions" type="localizer.py" name="localizer" output="screen" required="true" />
+
+        <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/localization.yaml" />
+    </group>
+    
+    <!-- Planning -->
+    <group ns="planning">
+
+        <!-- Lanelet2 map visualizer -->
+        <node pkg="autoware_mini" type="lanelet2_map_visualizer.py" name="lanelet2_map_visualizer" output="screen" required="true">
+            <param name="lanelet2_map_name" value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
+            <param name="enable_auto_stop_checker" value="$(arg enable_auto_stop_checker)" />
+        </node>
+
+        <!-- Lanelet2 global planner -->
+        <node pkg="autoware_mini_practice_solutions" type="lanelet2_global_planner.py" name="lanelet2_global_planner" output="screen" required="true">
+            <param name="lanelet2_map_name" value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
+            <param name="speed_limit"       value="$(arg speed_limit)" />
+        </node>
+
+        <!-- Global path visualizer -->
+        <node pkg="autoware_mini" type="global_path_visualizer.py" name="global_path_visualizer" output="screen" required="true"/>
+
+        <!-- Collision-points based local planner -->
+        <group>
+            <node pkg="autoware_mini_practice_solutions" type="local_path_extractor.py" name="local_path_extractor" output="screen" required="true" />
+
+            <node if="$(arg enable_goal_checker)" pkg="autoware_mini_practice_solutions" type="goal_stop_checker.py" name="goal_stop_checker" output="screen" required="true" />
+            <node if="$(arg enable_object_checker)" pkg="autoware_mini_practice_solutions" type="object_collision_checker.py" name="object_collision_checker" output="screen" required="true" />
+
+            <node pkg="autoware_mini" type="collision_points_merger.py" name="collision_points_merger" output="screen" required="true" >
+                <param name="synchronization_method"        value="$(arg synchronization_method)" />
+                <param name="enable_goal_checker"           value="$(arg enable_goal_checker)"/>
+                <param name="enable_object_checker"         value="$(arg enable_object_checker)"/>
+                <param name="enable_auto_stop_checker"      value="false"/>
+                <param name="enable_traffic_light_checker"  value="false"/>
+                <param name="enable_crosswalk_checker"      value="false"/>
+                <param name="enable_yielding_checker"       value="false"/>
+                <param name="enable_trajectory_checker"     value="false"/>
+            </node>
+            <node pkg="autoware_mini_practice_solutions" type="simple_speed_planner.py" name="speed_planner" output="screen" required="true" >
+                <param name="synchronization_method" value="$(arg synchronization_method)" />
+            </node>
+        </group>
+        <!-- Local path visualizer -->
+        <node pkg="autoware_mini" type="local_path_visualizer.py" name="local_path_visualizer" output="screen" required="true"/>
+
+        <!-- Config -->
+        <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/planning.yaml" />
+
+    </group>
+
+    <!-- Detection -->
+    <group ns="detection">
+        <group ns="lidar">
+            <!-- Ground removal -->
+            <group ns="center">
+                <node pkg="autoware_mini" type="naive_ground_removal.py" name="naive_ground_removal" output="screen" required="true">
+                    <remap from="points_raw" to="/lidar_center/points_raw" />
+                </node>
+            </group>
+            <!-- Filtering -->
+            <node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="screen" required="true" />
+            <node pkg="nodelet" type="nodelet" name="voxel_grid_filter" args="load pcl/VoxelGrid pcl_manager" output="screen" required="true">
+                <remap from="~input" to="/detection/lidar/center/points_no_ground" />
+                <remap from="~output" to="/detection/lidar/points_filtered" />
+            </node>
+            <!-- Point clusterer -->
+            <node pkg="autoware_mini_practice_solutions" type="points_clusterer.py" name="points_clusterer" output="screen" required="true" />
+
+            <node pkg="autoware_mini_practice_solutions" type="cluster_detector.py" name="cluster_detector" output="screen" required="true" />
+
+            <node pkg="topic_tools" type="relay" args="detected_objects /detection/detected_objects" name="detected_objects_relay" output="screen" required="true" />
+        </group>
+
+        <group if="$(arg use_tracking)">
+            <node pkg="autoware_mini" type="ema_tracker.py" name="ema_tracker" output="screen" required="true" />
+            <node pkg="autoware_mini" type="detected_objects_visualizer.py" name="tracked_objects_visualizer" output="screen" required="true">
+                <remap from="detected_objects" to="tracked_objects" />
+                <remap from="detected_objects_markers" to="tracked_objects_markers" />
+            </node>
+             <node pkg="topic_tools" type="relay" args="tracked_objects final_objects" name="detected_objects_relay" output="screen" required="true" />
+        </group>
+        <node unless="$(arg use_tracking)" pkg="topic_tools" type="relay" args="detected_objects /detection/final_objects" name="detected_objects_relay" output="screen" required="true" />
+
+        <node pkg="autoware_mini" type="detected_objects_visualizer.py" name="final_objects_visualizer" output="screen" required="true">
+            <remap from="detected_objects" to="final_objects" />
+            <remap from="detected_objects_markers" to="final_objects_markers" />
+        </node>
+
+
+        <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/detection.yaml"/>
+
+    </group>
+
+    <!-- Control -->
+    <group ns="control">
+        <!-- Follower -->
+        <node pkg="autoware_mini_practice_solutions" type="pure_pursuit_follower.py" name="pure_pursuit_follower" output="screen" required="true">
+            <remap from="path" to="/planning/local_path" />
+        </node>
+        <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/control.yaml"/>
+    </group>
+
+    <!-- Load vehicle config data -->
+    <rosparam command="load" file="$(find autoware_mini)/config/vehicle.yaml" ns="vehicle"/>
+
+    <!-- Load static transforms -->
+    <group ns="vehicle_platform_frames">
+      <param name="robot_description" textfile="$(find autoware_mini)/config/urdf/lexus.urdf" />
+      <node pkg="robot_state_publisher" type="robot_state_publisher" name="vehicle_platform_frames_publisher" />
+    </group>
+
+    <include file="$(find autoware_mini)/launch/dashboard.launch" />
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find autoware_mini_practice_solutions)/rviz/practice_6.rviz" required="true" />
+
+</launch>

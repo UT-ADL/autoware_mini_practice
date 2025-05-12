@@ -9,15 +9,14 @@ The main functionality of the `camera_traffic_light_detector` node:
 * subscribe to the lanelet2 map and extract the traffic light locations from the map
 * project traffic lights onto the image and extract the bounding boxes
 * send images to a neural network (model provided) for classification
-* publish the classifiaction results
+* publish the classification results
 
 
-Additionally, you will need to add the traffic light-related logic to the local planner. It will be up to a local planner to change the speed according to the traffic light status. The logic will be similar to a stopping behind the goal point with traffic light status acting as a switch turning the obstacle on or off.
-
+Additionally, you will need to add additional small node that will process stopping traffic lights as collision points to complement the logic of the existing local planner.
 
 #### Additional files
-- [launch/practice_7.launch](https://owncloud.ut.ee/owncloud/s/4fgTFDmg3gY7f2j) - a launch file that should run without errors at the end of the practice
-- [rviz/practice_7.rviz](https://owncloud.ut.ee/owncloud/s/2DQNsrriTRmRqT9) - RViz config file for visualizing the topics.
+- [launch/practice_7.launch](launch/practice_7.launch) - a launch file that should run without errors at the end of the practice
+- [rviz/practice_7.rviz](rviz/practice_7.rviz) - RViz config file for visualizing the topics.
 
 
 ### Expected outcome
@@ -48,8 +47,8 @@ Create the node `camera_traffic_light_detector` under `nodes/detection/`, copy t
     from geometry_msgs.msg import Point, PointStamped
     from sensor_msgs.msg import Image
     from sensor_msgs.msg import CameraInfo
-    from autoware_msgs.msg import TrafficLightResult, TrafficLightResultArray
-    from autoware_msgs.msg import Lane
+    from autoware_mini.msg import TrafficLightResult, TrafficLightResultArray
+    from autoware_mini.msg import Path
     from tf2_geometry_msgs import do_transform_point
 
     from cv_bridge import CvBridge, CvBridgeError
@@ -83,8 +82,8 @@ Create the node `camera_traffic_light_detector` under `nodes/detection/`, copy t
             # Node parameters
             onnx_path = rospy.get_param("~onnx_path")
             self.rectify_image = rospy.get_param('~rectify_image')
-            self.traffic_light_bulb_radius = rospy.get_param("~traffic_light_bulb_radius")
-            self.radius_to_roi_multiplier = rospy.get_param("~radius_to_roi_multiplier")
+            self.roi_width_extent = rospy.get_param("~roi_width_extent")
+            self.roi_height_extent = rospy.get_param("~roi_height_extent")
             self.min_roi_width = rospy.get_param("~min_roi_width")
             self.transform_timeout = rospy.get_param("~transform_timeout")
             # Parameters related to lanelet2 map loading
@@ -95,7 +94,7 @@ Create the node `camera_traffic_light_detector` under `nodes/detection/`, copy t
             lanelet2_map_name = rospy.get_param("~lanelet2_map_name")
 
             # global variables
-            self.signals = None
+            self.trafficlights = None
             self.tfl_stoplines = None
             self.camera_model = None
             self.stoplines_on_path = None
@@ -115,9 +114,9 @@ Create the node `camera_traffic_light_detector` under `nodes/detection/`, copy t
 
             # Extract all stop lines and signals from the lanelet2 map
             all_stoplines = get_stoplines(lanelet2_map)
-            self.signals = get_stoplines_trafficlights_bulbs(lanelet2_map)
+            self.trafficlights = get_stoplines_trafficlights(lanelet2_map)
             # If stopline_id is not in self.signals then it has no signals (traffic lights)
-            self.tfl_stoplines = {k: v for k, v in all_stoplines.items() if k in self.signals}
+            self.tfl_stoplines = {k: v for k, v in all_stoplines.items() if k in self.trafficlights}
 
             # Publishers
             self.tfl_status_pub = rospy.Publisher('traffic_light_status', TrafficLightResultArray, queue_size=1, tcp_nodelay=True)
@@ -125,7 +124,7 @@ Create the node `camera_traffic_light_detector` under `nodes/detection/`, copy t
 
             # Subscribers
             rospy.Subscriber('camera_info', CameraInfo, self.camera_info_callback, queue_size=1, tcp_nodelay=True)
-            rospy.Subscriber('/planning/local_path', Lane, self.local_path_callback, queue_size=1, buff_size=2**20, tcp_nodelay=True)
+            rospy.Subscriber('/planning/local_path', Path, self.local_path_callback, queue_size=1, buff_size=2**20, tcp_nodelay=True)
             rospy.Subscriber('image_raw', Image, self.camera_image_callback, queue_size=1, buff_size=2**26, tcp_nodelay=True)
 
 
@@ -215,37 +214,36 @@ Create the node `camera_traffic_light_detector` under `nodes/detection/`, copy t
 
         return stoplines
 
-    def get_stoplines_trafficlights_bulbs(lanelet2_map):
+    def get_stoplines_trafficlights(lanelet2_map):
         """
         Iterate over all regulatory_elements with subtype traffic light and extract the stoplines and sinals.
-        Organize the data into dictionary indexed by stopline id that contains a traffic_light id and light bulb data.
+        Organize the data into dictionary indexed by stopline id that contains a traffic_light id and the four coners of the traffic light.
         :param lanelet2_map: lanelet2 map
-        :return: {stopline_id: {traffic_light_id: [[bulb_id, bulb_color, x, y, z], ...], ...}, ...}
+        :return: {stopline_id: {traffic_light_id: {'top_left': [x, y, z], 'top_right': [...], 'bottom_left': [...], 'bottom_right': [...]}, ...}, ...}
         """
-
+    
         signals = {}
-
+    
         for reg_el in lanelet2_map.regulatoryElementLayer:
             if reg_el.attributes["subtype"] == "traffic_light":
                 # ref_line is the stop line and there is only 1 stopline per traffic light reg_el
                 linkId = reg_el.parameters["ref_line"][0].id
-
-                for bulbs in reg_el.parameters["light_bulbs"]:
+    
+                for tfl in reg_el.parameters["refers"]:
+                    tfl_height = float(tfl.attributes["height"])
                     # plId represents the traffic light (pole), one stop line can be associated with multiple traffic lights
-                    plId = bulbs.id
-                    # one traffic light has red, yellow and green bulbs
-                    bulb_data = [[bulb.id, bulb.attributes["color"], bulb.x, bulb.y, bulb.z] for bulb in bulbs]
+                    plId = tfl.id
+    
+                    traffic_light_data = {'top_left': [tfl[0].x, tfl[0].y, tfl[0].z + tfl_height],
+                                          'top_right': [tfl[1].x, tfl[1].y, tfl[1].z + tfl_height],
+                                          'bottom_left': [tfl[0].x, tfl[0].y, tfl[0].z],
+                                          'bottom_right': [tfl[1].x, tfl[1].y, tfl[1].z]}
+    
                     # signals is a dictionary indexed by stopline id and contains dictionary of traffic lights indexed by pole id
-                    # which in turn contains a list of bulbs
-                    signals.setdefault(linkId, {}).setdefault(plId, []).extend(bulb_data)
-
+                    # which in turn contains a dictionary of traffic light corners
+                    signals.setdefault(linkId, {}).setdefault(plId, traffic_light_data)
+    
         return signals
-
-
-    if __name__ == '__main__':
-        rospy.init_node('camera_traffic_light_detector', log_level=rospy.INFO)
-        node = CameraTrafficLightDetector()
-        node.run()
     ```
 
 ##### Validation
@@ -260,18 +258,18 @@ Create the node `camera_traffic_light_detector` under `nodes/detection/`, copy t
    ![no_image_rviz](images/no_image_rviz.png)
 
    - The topic `/detection/traffic_light_status` is there, but has something been published? Check with `rostopic echo` and `rostopic hz`
-   - run `rosnode info /detection/camera_fl/camera_traffic_light_detector` in another console to see the names of the topics `camera_traffic_light_detector` outputs:
+   - run `rosnode info /detection/camera1/camera_traffic_light_detector` in another console to see the names of the topics `camera_traffic_light_detector` outputs:
 
         ```
-        Node [/detection/camera_fl/camera_traffic_light_detector]
+        Node [/detection/camera1/camera_traffic_light_detector]
         Publications: 
-        * /detection/camera_fl/traffic_light_roi [sensor_msgs/Image]
-        * /detection/camera_fl/traffic_light_status [autoware_msgs/TrafficLightResultArray]
+        * /detection/camera1/traffic_light_roi [sensor_msgs/Image]
+        * /detection/camera1/traffic_light_status [autoware_msgs/TrafficLightResultArray]
         * /rosout [rosgraph_msgs/Log]
 
         Subscriptions: 
-        * /camera_fl/camera_info [sensor_msgs/CameraInfo]
-        * /camera_fl/image_raw [sensor_msgs/Image]
+        * /camera1/camera_info [sensor_msgs/CameraInfo]
+        * /camera1/image_raw [sensor_msgs/Image]
         * /planning/local_path [autoware_msgs/Lane]
         * /tf [tf2_msgs/TFMessage]
         * /tf_static [tf2_msgs/TFMessage]
@@ -284,10 +282,10 @@ Create the node `camera_traffic_light_detector` under `nodes/detection/`, copy t
 ## 2. Publish camera images for preview
 
 At the end of this task, we want to have the following topics being published from the `camera_traffic_light_detector` node
-* `/detection/camera_fl/traffic_light_roi`
-* `/detection/camera_fl/traffic_light_status`
-* `/detection/camera_fr/traffic_light_roi`
-* `/detection/camera_fr/traffic_light_status`
+* `/detection/camera1/traffic_light_roi`
+* `/detection/camera1/traffic_light_status`
+* `/detection/camera2/traffic_light_roi`
+* `/detection/camera2/traffic_light_status`
 
 We have to do it in `camera_image_callback` - whenever a new image appears, this callback will process it and provide the source data for the previously mentioned topics.
 
@@ -317,7 +315,7 @@ As a starting point in this task, we will assume first that there are no traffic
 ##### Validation
 * `roslaunch autoware_mini_practice_solutions practice_7.launch tfl_detector:=camera`
 * There should be a camera image present within RViz
-* echo the topics with --noarr argument and verify that messages are published `rostopic echo --noarr /detection/camera_fl/traffic_light_roi`
+* echo the topics with --noarr argument and verify that messages are published `rostopic echo --noarr /detection/camera1/traffic_light_roi`
 
     ![rviz_with_img](images/rviz_with_img.png)
 
@@ -371,47 +369,50 @@ It should be evident that cameras can have
 
     ```
     rois = []
-    for stoplineId in stoplines_on_path:
-        for plId, bulbs in self.signals[stoplineId].items():
 
+    for linkId in stoplines_on_path:
+        for plId, traffic_lights in self.trafficlights[linkId].items():
             us = []
             vs = []
-            for _, _, x, y, z in bulbs:
-                # extract map coordinates for every light bulb 
+
+            for x, y, z in traffic_lights.values():
                 point_map = Point(float(x), float(y), float(z))
 
                 # TODO
 
-                # calculate radius of the bulb in pixels
-                d = np.linalg.norm([point_camera.x, point_camera.y, point_camera.z])
-                radius = self.camera_model.fx() * self.traffic_light_bulb_radius / d
+                # convert the extent in meters to extent in pixels
+                extent_x_px = self.camera_model.fx() * self.roi_width_extent / point_camera.z
+                extent_y_px = self.camera_model.fy() * self.roi_height_extent / point_camera.z
 
-                # calc extent for every signal then generate roi using min/max and rounding
-                extent = radius * self.radius_to_roi_multiplier
-                us.extend([u + extent, u - extent])
-                vs.extend([v + extent, v - extent])
+                us.extend([u + extent_x_px, u - extent_x_px])
+                vs.extend([v + extent_y_px, v - extent_y_px])
 
-            # not all signals were in image, take next traffic light
-            if len(us) < 6:
+            # not all traffic lights were in image, take next traffic light
+            if len(us) < 8:
                 continue
+
             # round and clip against image limits
             us = np.clip(np.round(np.array(us)), 0, self.camera_model.width - 1)
             vs = np.clip(np.round(np.array(vs)), 0, self.camera_model.height - 1)
+
             # extract one roi per traffic light
             min_u = int(np.min(us))
             max_u = int(np.max(us))
             min_v = int(np.min(vs))
             max_v = int(np.max(vs))
+
             # check if roi is too small
             if max_u - min_u < self.min_roi_width:
                 continue
-            rois.append([int(stoplineId), plId, min_u, max_u, min_v, max_v])
+
+            rois.append([int(linkId), plId, min_u, max_u, min_v, max_v])
+
     return rois
 
     ```
 
 5. Find the **TODO** in the pasted code; there you have to implement the following:
-    - `point_map` variable is used to extract map coordinates for every light bulb (center points for red, yellow and green bulbs) within the traffic light (`plId`)
+    - `point_map` variable is used to extract map coordinates for every traffic light corner within the traffic light (`plId`)
     - transform `point_map` to camera frame: `point_camera = do_transform_point(PointStamped(point=point_map), transform).point`
     - transform point in the camera frame to pixel coordinates: `u, v = self.camera_model.project3dToPixel((point_camera.x, point_camera.y, point_camera.z))`
     - use the camera model to check if the resulting pixel coordinate is within the image (if not, it can be skipped - out of the image) `if u < 0 or u >= self.camera_model.width or v < 0 or v >= self.camera_model.height`
@@ -500,7 +501,7 @@ Now we have the predictions! As we can see, there is a list with 4 numbers for e
 
         tfl_result = TrafficLightResult()
         tfl_result.light_id = plId
-        tfl_result.lane_id = stoplineId
+        tfl_result.stopline_id = stoplineId
         tfl_result.recognition_result =  # TODO
         tfl_result.recognition_result_str = # TODO
 
@@ -514,7 +515,7 @@ Now we have the predictions! As we can see, there is a list with 4 numbers for e
 
     ![rviz_rois](images/rviz_rois.png)
 
-* echo the traffic light results topic `rostopic echo /detection/camera_fl/traffic_light_status`
+* echo the traffic light results topic `rostopic echo /detection/camera1/traffic_light_status`
 
     ```
     ---
@@ -526,23 +527,11 @@ Now we have the predictions! As we can see, there is a list with 4 numbers for e
     frame_id: ''
     results: 
     - 
-        header: 
-        seq: 0
-        stamp: 
-            secs: 0
-            nsecs:         0
-        frame_id: ''
         light_id: 2000585
         recognition_result: 1
         recognition_result_str: "green"
         lane_id: 5000051
     - 
-        header: 
-        seq: 0
-        stamp: 
-            secs: 0
-            nsecs:         0
-        frame_id: ''
         light_id: 2001115
         recognition_result: 1
         recognition_result_str: "green"
@@ -554,19 +543,21 @@ Now we have the predictions! As we can see, there is a list with 4 numbers for e
 
 ## 7. Add functionality to the local planner
 
-We now have the traffic light results, but we still need the logic in the local planner to act upon them.
+We now have the traffic light results, but we still need the logic in the local planner to act upon them. For this, we generalize the existing collision points logic to process traffic light stop lines.
 
 ##### Instructions
-1. With the help of `camera_traffic_light_detector` node as an example, add to `simple_local_planner`:
-    - loading the lanelet2 map
-    - function `get_stoplines(lanelet2_map)` and extract all the stoplines. This will return key (stopline_id) value (geometry - shapely line string) pairs of all stop lines in the map.
-2. Create the subscriber and a callback that will extract RED stop lines
-    - subscribe to a topic `/detection/traffic_light_status` with type [TrafficLightResult](https://github.com/autowarefoundation/autoware_ai_messages/blob/master/autoware_msgs/msg/TrafficLightResult.msg). 
-    - collect the RED stop lines - `stopline_id` is saved into `result.lane_id`
-3. Add the logic where
-    - ego vehicle reacts to RED stop line
-    - The intersection point of the stop line and local path geometries should be used as the "obstacle" point; shapely `intersect` and `intersection` can be used.
-    - `self.braking_safety_distance_stopline` parameter should be used for braking distance (you need to add getting this parameter value)
+1. Create a new node called `traffic_light_stopline_checker.py` under `planning/local`. Refer to traffic light detector node to:
+   - load the lanelet2 map
+   - use function `get_stoplines(lanelet2_map)` and extract all the stoplines. This will return key (stopline_id) value (geometry - shapely line string) pairs of all stop lines in the map.
+2. As with previous collision points processor nodes subscribe to `extracted_local_path`. Add subscribers for `/localization/current_velocity` and `/detection/traffic_light_status`
+    - collect the blocking stop lines - `stopline_id` is saved into `result.lane_id`
+    - `recognition_result` is set to 0 for (RED) and (YELLOW)
+    
+3. Use local path subscriber callback as the main function for all logic. 
+    - check if the local path is empty or velocity of the vehicle is None, if so, return
+    - for each blocking traffic light stop line, check if it intersects with the local path, if so create a new collision point object and add it to the array of collision points (location - location of the intersection, velocity - zero, distance to stop is equal to `braking_safety_distance_stopline`)
+    - set `deceleration_limit` to `tfl_maximum_deceleration` parameter, and category to `TRAFFIC_LIGHT_STOPLINE`
+    - publish the collision points
 
 ##### Validation
 * run `roslaunch autoware_mini_practice_solutions practice_7.launch tfl_detector:=camera`
@@ -593,31 +584,45 @@ We now have the traffic light results, but we still need the logic in the local 
 
 
 
-## 8. Check the deceleration
+[//]: # (## 8. Check the deceleration)
 
-The car would brake very sharply when approaching a traffic light, and it turns red just before crossing the stop line. Unfortunately, the typical driver's behaviour is accelerating with a "blinking yellow". That is why we need to add a check for the braking. If braking because of the traffic light exceeds a specific limit, we should ignore the red status and not brake. The goal is to ensure that cars following us would not drive into us because of our very sharp and possibly unexpected braking.
+[//]: # ()
+[//]: # (The car would brake very sharply when approaching a traffic light, and it turns red just before crossing the stop line. Unfortunately, the typical driver's behaviour is accelerating with a "blinking yellow". That is why we need to add a more complex logic to `deceleration_limit`. If braking because of the traffic light exceeds a specific limit, we should ignore the red status and not brake. The goal is to ensure that cars following us would not drive into us because of our very sharp and possibly unexpected braking.)
 
-##### Instructions
-1. Add deceleration calculation to `simple_local_planner`, the formula:
+[//]: # ()
+[//]: # (##### Instructions)
 
-    ![deceleration_formula](images/deceleration_formula.png)
+[//]: # (1. Add deceleration calculation to `simple_local_planner`, the formula:)
 
-2. If the deceleration exceeds the parameter `tfl_maximum_deceleration` value (need to add getting it), the ego vehicle should not react to a red stop line. The parameter is loaded from the `config/planning.yaml` file and is "private" to this node.
-3. When the ego vehicle ignores the braking for the red stop line, a `logwarn` message should be printed out in the console with [`throttle`](http://wiki.ros.org/rospy/Overview/Logging#Logging_Periodically) of 3 seconds, not to overflood the console with messages at 10Hz.
+[//]: # ()
+[//]: # (    ![deceleration_formula]&#40;images/deceleration_formula.png&#41;)
+
+[//]: # ()
+[//]: # (2. If the deceleration exceeds the parameter `tfl_maximum_deceleration` value &#40;need to add getting it&#41;, the ego vehicle should not react to a red stop line. The parameter is loaded from the `config/planning.yaml` file and is "private" to this node.)
+
+[//]: # (3. When the ego vehicle ignores the braking for the red stop line, a `logwarn` message should be printed out in the console with [`throttle`]&#40;http://wiki.ros.org/rospy/Overview/Logging#Logging_Periodically&#41; of 3 seconds, not to overflood the console with messages at 10Hz.)
+
+[//]: # ()
+[//]: # ()
+[//]: # (##### Validation)
+
+[//]: # (* run `roslaunch autoware_mini_practice_solutions practice_7.launch tfl_detector:=camera`)
+
+[//]: # (* add the goal point further than the stop line on the path)
+
+[//]: # (* Observe that the status at the end is still briefly detected as RED, but )
+
+[//]: # (    - there is no target velocity drop in the target velocity graph, and )
+
+[//]: # (    - the console has printed out a warning message about ignoring the stop line)
+
+[//]: # ()
+[//]: # (        ```)
+
+[//]: # (        [WARN] [1711378477.980142]: /planning/simple_local_planner - ignore red traffic light, deceleration: 8.608831)
+
+[//]: # (        ``` )
 
 
-##### Validation
-* run `roslaunch autoware_mini_practice_solutions practice_7.launch tfl_detector:=camera`
-* add the goal point further than the stop line on the path
-* Observe that the status at the end is still briefly detected as RED, but 
-    - there is no target velocity drop in the target velocity graph, and 
-    - the console has printed out a warning message about ignoring the stop line
-
-        ```
-        [WARN] [1711378477.980142]: /planning/simple_local_planner - ignore red traffic light, deceleration: 8.608831
-        ``` 
-
-
-### Finilize the code
-* clean the code of any debugging printouts and add comments where necessary
-* when finalized and pushed to your repo, please email a notification that the code is ready for review.
+### Finalize the code
+* Clean the code of any debugging printouts and add comments where necessary .

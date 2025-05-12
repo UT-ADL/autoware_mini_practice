@@ -2,12 +2,12 @@
 
 # Practice 4 - Global planner
 
-In this practice, we will be using a map. Map is in [Lanelet2](https://github.com/fzi-forschungszentrum-informatik/Lanelet2) format. Your task will be to write a global planner that finds the shortest route from the vehicle's current location to the goal point. The path should then be converted to a `Lane` message so that the `pure_pursuit_follower`, a node you wrote in the previous practice, could use it for path following.
+In this practice, we will be using a map. Map is in [Lanelet2](https://github.com/fzi-forschungszentrum-informatik/Lanelet2) format. Your task will be to write a global planner that finds the shortest route from the vehicle's current location to the goal point. The path should then be converted to a `Path` message so that the `pure_pursuit_follower`, a node you wrote in the previous practice, could use it for path following.
 
 
 #### Additional files provided
-   - [launch/practice_4.launch](https://owncloud.ut.ee/owncloud/s/GmNaQwz7XLAkZFi) - a launch file that should run without errors at the end of the practice
-   - [rviz/practice_4.rviz](https://owncloud.ut.ee/owncloud/s/DFReonyd9KJz6RJ) - RViz config file for visualizing the topics.
+   - [launch/practice_4.launch](launch/practice_4.launch) - a launch file that should run without errors at the end of the practice
+   - [rviz/practice_4.rviz](rviz/practice_4.rviz) - RViz config file for visualizing the topics.
 
 ### Expected outcome
 * General level understanding of the global planner tasks
@@ -60,11 +60,6 @@ Output loginfo messages:
 [INFO] [1707312819.916352]: /lanelet2_global_planner - goal position (-1.027190, -40.500565, 0.000000) orientation (0.000000, 0.000000, -0.760734, 0.649064) in map frame
 [INFO] [1707312907.073692]: /lanelet2_global_planner - goal position (4.622345, -35.071140, 0.000000) orientation (0.000000, 0.000000, 0.619234, 0.785206) in map frame
 ```
-
-* run `rqt_graph` - your node graph should look similar:
-
-![node_graph_task2](images/rqt_graph_task2.png)
-
 
 
 ## 2. Find the route on the lanelet2 map
@@ -125,7 +120,7 @@ LaneletSequence([ConstLanelet(403, ConstLineString3d(5005287, [ConstPoint3d(1000
 
 ## 3. Convert lanelets to a path
 
-We now have a route (`path_no_lane_change` from code example) that consists of lanelets (LaneletSequence), but we need to convert it to message type `autoware_msgs/Lane` and publish it to a topic `global_path`, so the `pure_pursuit_follower` would be able to subscribe to it and do its job (path following).
+We now have a route (`path_no_lane_change` from code example) that consists of lanelets (LaneletSequence), but we need to convert it to message type `autoware_mini/Path` and publish it to a topic `global_path`, so the `pure_pursuit_follower` would be able to subscribe to it and do its job (path following).
 
 ##### Instructions
 1. Create a separate function that converts lanelet sequence to waypoints
@@ -141,30 +136,30 @@ if 'speed_ref' in lanelet.attributes:
     speed = float(lanelet.attributes['speed_ref'])
 ```
 
-4. [Waypoints](https://github.com/streetdrone-home/Autoware/blob/master/ros/src/msgs/autoware_msgs/msg/Waypoint.msg) should be extracted from `lanelet.centerline` (again it is iterable and gives you points where coordinates can be accessed with point.x, point.y etc.).
+4. Waypoints should be extracted from `lanelet.centerline` (again it is iterable and gives you points where coordinates can be accessed with point.x, point.y etc.).
 hint: the end point of a lanelet and the start point of the following lanelet overlap - there should be no overlapping waypoints in the output path
 
 ```
-# create Waypoint and get the coordinats from lanelet.centerline points
+# create Waypoint (from autoware_mini.msgs import Waypoint) and get the coordinats from lanelet.centerline points
 waypoint = Waypoint()
-waypoint.pose.pose.position.x = point.x
-waypoint.pose.pose.position.y = point.y
-waypoint.pose.pose.position.z = point.z
-waypoint.twist.twist.linear.x = speed
+waypoint.position.x = point.x
+waypoint.position.y = point.y
+waypoint.position.z = point.z
+waypoint.speed = speed
 ```
 
 5. Create a publisher and publish waypoints into the topic `global_path`; it should be [latched topic](https://wiki.ros.org/rospy/Overview/Publishers%20and%20Subscribers#rospy.Publisher_initialization). 
    - create a special function for waypoint publishing that is called within the callback (after the lanelet sequence has been converted to waypoints). It makes the code more modular and has a better overview, and we might need to call it from another callback, as we will see later.
-   - `global_path` should be type [autoware_msgs/Lane](https://github.com/streetdrone-home/Autoware/blob/master/ros/src/msgs/autoware_msgs/msg/Lane.msg) and its attribute `waypoints` is the list of Waypoints.
+   - `global_path` should be type autoware_mini/Path and its attribute `waypoints` is the list of Waypoints.
    - `frame_id` should come from `config/planning.yaml` file, parameter `output_frame`
    - timestamp should be added
 
 ```
-lane = Lane()        
-lane.header.frame_id = self.output_frame
-lane.header.stamp = rospy.Time.now()
-lane.waypoints = waypoints
-self.waypoints_pub.publish(lane)
+path = Path()        
+path.header.frame_id = self.output_frame
+path.header.stamp = rospy.Time.now()
+path.waypoints = waypoints
+self.waypoints_pub.publish(path)
 ```
 
 ##### Validation
@@ -237,5 +232,4 @@ Three ideas that might help:
 ##### Validation
 * Test your solution and verify that it works!
 * Clean the code, add comments, think about the readability of the code and pay attention to formatting
-* Commit your code!
-* When finished, please email small description of your solution to the last task. Then, we know that your code is ready for review.
+* When finished, please create `practice_4_solution.txt` file in the root directory of your repo containing a small description of your solution to the last task.

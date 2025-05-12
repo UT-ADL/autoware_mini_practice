@@ -14,11 +14,11 @@ The task of localizer in this case is very simple - it must take the latitude an
 
 #### Additionally provided files:
 
-From this practice we will be providing some supporting files in front that you need to download and put in the corresponding directories inside your `autoware_mini_practice_solutions` folder.
+From this practice we will be providing some supporting files in this repository (or clone the repository) that you need to download and put in the corresponding directories inside your `autoware_mini_practice_solutions` folder.
 
-* [launch/practice_2.launch](https://owncloud.ut.ee/owncloud/s/yLa9iqjkxwfEBer) - a launch file that should run without errors at the end of the practice using your localizer node and also launch waypoint recording
-* [rviz/practice_2.rviz](https://owncloud.ut.ee/owncloud/s/is8xeZNEQzFMcJD) - RViz config file for visualizing the topics. RViz is a 3D visualization tool for ROS.
-* [config/localization.yaml](https://owncloud.ut.ee/owncloud/s/5C8FCFJRRTQgbXP) - some parameter values for localizer. Instead of using launch file to set parameter values a file can be loaded where the parameters are listed.
+* [launch/practice_2.launch](launch/practice_2.launch) - a launch file that should run without errors at the end of the practice using your localizer node and also launch waypoint recording
+* [rviz/practice_2.rviz](rviz/practice_2.rviz) - RViz config file for visualizing the topics. RViz is a 3D visualization tool for ROS.
+* [config/localization.yaml](config/localization.yaml) - some parameter values for localizer. Instead of using launch file to set parameter values a file can be loaded where the parameters are listed.
 
 If you want to perform and/or validate this and next practices on your own hardware you need to do some additional steps:
 
@@ -28,8 +28,8 @@ If you want to perform and/or validate this and next practices on your own hardw
 ### Expected outcome
 
 * Understanding what does it mean to localize a car on the map
-* Your localizer node will convert the measured location from the GNSS system to map coordinates
-* As a result, we are able to recorde a trace of the car into a csv file and can make the car follow that trace in the next practice
+* Your localizer node will convert the measured location from the GNSS system frame to map coordinates
+* As a result, we are able to record a trajectory of the car into a csv file and can make the car follow that trajectory in the next practice
 
 
 ## 0. Combine workspaces
@@ -40,11 +40,11 @@ During practices we will often reuse utility nodes and data files from the main 
 * `cd ~/autoware_mini_ws` 
 * `catkin build` - Will rebuild packages in a shared workspace, you should now see `autoware_mini_practice_solutions` among the list of built packages
 * `source devel/setup.bash` - important to source your newly build workspace with the new package
+* If you have added in previous practice `source ~/autoware_mini_practice/devel/setup.bash` to your `~/.bashrc` file, then you need to edit the line to point to a path to source file of your new combined workspace instead. 
 
-Open `practice_2.launch` and analyze it. You can notice that it shows from which package every executable node comes: we reuse `waypoint_saver.py` from `autoware_mini` package, but in addition we reuse some nodes from general ROS packages such as `rviz`. 
+Open `practice_2.launch` and analyze it. You can notice that it shows from which package every executable node comes: we reuse `waypoint_saver.py` from `autoware_mini` package, and in addition we reuse some nodes from general ROS packages such as `rviz`. 
 
-Finally, we want to add some dependencies to our `package.xml` file to cover future references to external packages. Open the file and add following code after `<exec_depend>std_msgs</exec_depend>
-` line.
+Finally, we want to add some dependencies to our `package.xml` file to cover references to external packages we will use in these practices. Open the file and add following code after `<exec_depend>std_msgs</exec_depend>` line.
 
 ```
   <exec_depend>tf</exec_depend>
@@ -53,7 +53,6 @@ Finally, we want to add some dependencies to our `package.xml` file to cover fut
   <exec_depend>message_filters</exec_depend>
   <exec_depend>python3-sklearn</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
-  <exec_depend>autoware_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>novatel_oem7_msgs</exec_depend>
   <exec_depend>visualization_msgs</exec_depend>
@@ -132,7 +131,7 @@ if __name__ == '__main__':
 ##### Validation
 * As a reminder lets run first all the nodes manually
 * In terminal 1: `roscore`
-* In terminal 2: `rosbag play ride_14_minimal.bag` - need to be in the same folder where the rosbag is or enter it with the relative path. Bag files are under `autoware_mini` package directory `data/bags`.
+* In terminal 2: `rosbag play ride_14_minimal.bag` - need to be in the same folder where the rosbag is or enter it with the relative path. Bag files are under `autoware_mini` package directory `data/bags`. You can pause the playback with `space` key and resume with the same key in the terminal.
 * In terminal 3: run the localizer node (`python localizer.py`) and see if the coordinates printed out are roughly similar to the following:
 
 ```
@@ -141,7 +140,7 @@ latitude:  58.37732063697093  longitude:  26.730934613622136
 latitude:  58.377320343735214  longitude:  26.730933999096404
 ...
 ```
-* Close all runnning processes in terminals
+* Close all running processes in terminals
 * Inside localizer node in parameters section uncomment getting the three parameter values (`undulation`, `utm_origin_lat`, `utm_origin_lon`)
 * run `roslaunch autoware_mini_practice_solutions practice_2.launch`
    - we should see the same coordinates printed out in the console
@@ -189,9 +188,9 @@ As a next step, we must publish transformed coordinates to a `current_pose` topi
          - `position.x` and `position.y` are the transformed coordinates with subtracted origin coordinates
          - for `position.z` we need to take `msg.height` and subtract `undulation` (parameter)
       * `orientation` (message type [geometry_msgs/Quaternion](https://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/Quaternion.html)). Quaternions are a way to represent orientations in 3D space that have [many favorable properties](https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation).
-         * From GNSS topic we have azimuth - angle from north in clockwise direction (we will be ignoring the car's roll and pitch angles currently). Essentially, we need to convert the azimuth angle to quaternion.
+         * From GNSS topic we have azimuth angle in degrees - angle from north in clockwise direction (we will be ignoring the car's roll and pitch angles currently). Essentially, we need to convert the azimuth angle to quaternion.
          * GNSS azimuth is in the WGS84 system, we need to correct it for the UTM zone 35N projection first. The correction depends on location and is also known as [meridian convergence](https://en.wikipedia.org/wiki/Transverse_Mercator_projection#Convergence). This can be found with [get_factors](https://pyproj4.github.io/pyproj/stable/api/proj.html#pyproj.Proj.get_factors) method, see the example code below. The correction should be subtracted from azimuth angle coming from the message.
-         * Next thing is we need to convert angle from **clockwise (CW)** angle from **y axis** (north) to **counterclocḱwise (CCW)** angle from **x-axis** (this is how angles are usually represented in ROS). Let's call this angle **yaw**. For that, the function `convert_azimuth_to_yaw()` is provided in the code below.
+         * Next thing is we need to convert angle from **clockwise (CW)** angle from **y axis** (north) to **counterclocḱwise (CCW)** angle from **x-axis** (this is how angles are usually represented in ROS). Let's call this angle **yaw**. For that, the function `convert_azimuth_to_yaw()` is provided in the code below. Note: the function take corrected azimuth input in radians.
          * And finally, we need to convert the angle to quaternion; you can use the `quaternion_from_euler` for that.
 
 ```
@@ -254,7 +253,7 @@ pose:
   position: 
     x: 206.55750858492684
     y: -861.8742412924767
-    z: 0.0
+    z: 34.15901836518278
   orientation: 
     x: 0.0
     y: 0.0
@@ -312,7 +311,7 @@ For that, you need to use [TransformBroadcaster() from tf2_ros](https://wiki.ros
    - `frame_id` is `map`
    - `child_frame_id` should be `base_link`
    - timestamp should come from the GNSS message
-2. Transform consists of translation and rotation that are basically current_pose's position and orientation. Basically to convert (0, 0) in `base_link` frame to `map` frame, you just need to add the current position.
+2. Transform consists of translation and rotation that are current_pose's position and orientation. Basically to convert (0, 0) in `base_link` frame to `map` frame, you just need to add the current position.
 3. Use `sendTransform()` to publish the transform (TransformStamped message)
 
 
@@ -329,7 +328,7 @@ self.br.sendTransform(t)
 
 ##### Validation 
 * `roslaunch autoware_mini_practice_solutions practice_2.launch`
-* Rviz should open with a similar visualization. Location information is played from the rosbag, your localization node transfrms them into UTM Zone 35N coordinates, and also waypoint recording is launched.
+* Rviz should open with a similar visualization. Location information is replayed from the rosbag, your localization node transforms them into UTM Zone 35N coordinates, and also waypoint recording is launched.
 
 ![saved_waypoints_img](images/saved_waypoints.png)
 

@@ -37,7 +37,7 @@ while not rospy.is_shutdown():
     pub.publish("Hello world!")
     rate.sleep()
 ```
-3. Additional reading and explanations about the different parts of the code
+Additional reading and explanations about the different parts of the code
    - `rospy.init_node('publisher')` - [Initialize ROS node](https://wiki.ros.org/rospy/Overview/Initialization%20and%20Shutdown#Initializing_your_ROS_Node)
    - `pub = rospy.Publisher('/message', String, queue_size=10)` [Create ROS publisher](https://wiki.ros.org/rospy/Overview/Publishers%20and%20Subscribers#Publishing_to_a_topic)
    - `rospy.Rate()` and `rate.sleep()` - set the frequency, and if the job is done, wait until it is time to act again
@@ -75,7 +75,7 @@ rospy.init_node('subscriber')
 rospy.Subscriber("/message", String, callback)
 rospy.spin()
 ```
-3. More explanations:
+More explanations:
    - Create the [Subscriber](https://wiki.ros.org/rospy/Overview/Publishers%20and%20Subscribers#Subscribing_to_a_topic)
    - `rospy.spin` - starts the thread that receives the messages and runs the callback
 
@@ -106,7 +106,11 @@ For building and creating workspace and packages we will be using [catkin_tools]
 3. And already we could build a workspace without actually having any contents there
    - `catkin build` - will initialize workspace and build the workspace and packages inside.
    - `ll` - see that additional folders like `build` and `devel` are created
-4. Now we want to initiate Github repo inside the newly created `autoware_mini_practice_solutions` folder
+4. Source the workspace: `source devel/setup.bash`
+5. Optional: This command can be added to the `~/.bashrc` file, so it will be sourced every time you open a new terminal. You can do it with the command:
+   - `echo "source ~/autoware_mini_practice/devel/setup.bash" >> ~/.bashrc`
+   - `source ~/.bashrc` to apply the changes
+6. Now we want to initiate Github repo inside the newly created `autoware_mini_practice_solutions` folder
    - Go to [New repository](https://github.com/new)
    - Create **public** repository under name `autoware_mini_practice_solutions`
    - Follow the next commands to set your local files to point to Github repository: 
@@ -114,9 +118,10 @@ For building and creating workspace and packages we will be using [catkin_tools]
      - `echo "Start of autoware_mini_practice_solutions" >> README.md`
      - `git init`
      - `git add README.md`
-     - `git commit -m “Init”`
+     - `git commit -m “Init repo”`
      - `git branch -M main`
      - `git remote add origin git@github.com:<your_github_username>/autoware_mini_practice_solutions.git`
+   - Before pushing the repo, make sure you have [generated](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent?platform=linux) and [added](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) a new SSH key to your GitHub account
      - `git push -u origin main`
 
 
@@ -131,11 +136,11 @@ Some essential files are needed to define the package. These files could be crea
    - `CMakeLists.txt` - build instructions
 
 ##### Continue with ROS package creation
-5. `cd ~/autoware_mini_practice/src` - go to that folder (it should already contain folder `autoware_mini_practice_solutions`)
-6. `catkin create pkg autoware_mini_practice_solutions --system-deps rospy std_msgs` - will create a package (namely the two essential files) and adds `rospy` and `std_msgs` as dependencies
-7. Open and see the contents of `package.xml` and `CMakeLists.txt` files, edit metadata in `package.xml`
-8. Optional: clean these files from unnecessary comments (all commented-out blocks)
-9. Create folder `nodes` under the `~/autoware_mini_practice/src/autoware_mini_practice_solutions` and move your previously created subscriber and publisher nodes there
+1. `cd ~/autoware_mini_practice/src` - go to that folder (it should already contain folder `autoware_mini_practice_solutions`)
+2. `catkin create pkg autoware_mini_practice_solutions --system-deps rospy std_msgs` - will create a package (namely the two essential files) and adds `rospy` and `std_msgs` as dependencies
+3. Open and see the contents of `package.xml` and `CMakeLists.txt` files, edit metadata in `package.xml`
+4. Optional: clean these files from unnecessary comments (all commented-out blocks)
+5. Create folder `nodes` under the `~/autoware_mini_practice/src/autoware_mini_practice_solutions` and move your previously created subscriber and publisher nodes there
 
 ##### Validation
 * `cd ~/autoware_mini_practice`
@@ -198,7 +203,7 @@ What if we would like to publish another message instead of "Hello World!". Inst
 ```
 
 ##### Node parameters
-Now we need to add the code line (provided below) into the node that will get the prameter value from the ROS parameter server. Read more in [Using Parameters in rospy](https://wiki.ros.org/rospy_tutorials/Tutorials/Parameters)
+Now we need to add the code line (provided below) into the node that will get the parameter value from the ROS parameter server. Read more in [Using Parameters in rospy](https://wiki.ros.org/rospy_tutorials/Tutorials/Parameters)
 
 ```
 message = rospy.get_param('~message', 'Hello World!')

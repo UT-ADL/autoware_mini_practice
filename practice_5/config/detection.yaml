@@ -1,0 +1,74 @@
+output_frame: map
+
+lidar:
+  center:
+    naive_ground_removal:
+      min_x: -60.0
+      max_x: 75.0
+      min_y: -60.0
+      max_y: 60.0
+      min_z: -2.0
+      max_z: 0.55
+      cell_size: 0.6
+      tolerance: 0.15
+      filter: average                    # none, median, average, minimum
+      filter_size: 3
+      filter_iterations: 1
+  voxel_grid_filter:
+    leaf_size: 0.25
+    filter_field_name: z
+    filter_limit_min: -2.0
+    filter_limit_max: 0.5
+    filter_limit_negative: False
+  points_clusterer:
+    cluster_epsilon: 0.7
+    cluster_min_size: 4
+  cluster_detector:
+    min_cluster_size: 4
+    enable_pointcloud: False
+    enable_convex_hull: True
+    transform_timeout: 0.06         # needed for Carla
+
+obstacle_simulation:
+  publish_rate: 10
+
+ema_tracker:
+  enable_initial_velocity_estimate: False
+  enable_initial_acceleration_estimate: False
+  enable_missed_detection_propagation: True
+  detection_counter_threshold: 4
+  missed_counter_threshold: 2
+  iou_threshold: 0.1
+  velocity_gain: 0.2
+  acceleration_gain: 0.0
+  association_method: iou   # iou, euclidean
+  max_euclidean_distance: 2.0
+  update_heading_bboxes: True
+
+mqtt_traffic_light_detector:
+  mqtt_host: traffic.traffest.com
+  mqtt_port: 8883
+  mqtt_topic: Tartu/#
+  enable_automatic_subscribe: True
+  automatic_subscription_range: 200
+  timeout: 2.0
+  id_string: " mqtt"      # string added to traffic light result and displayed in rviz
+
+traffic_light_majority_merger:
+  id_string: " cam"      # string added to traffic light result and displayed in rviz
+
+camera1:
+  camera_traffic_light_detector:
+    roi_width_extent: 0.65  # ROI box width extension amount in meters
+    roi_height_extent: 0.55  # ROI box heigth extension amount in meters
+    min_roi_width: 50  # minimum ROI width in pixels, when classification makes sense
+    rectify_image: False  # the distortions of Mako cameras are so small they don't matter
+    transform_timeout: 0.06
+
+camera2:
+  camera_traffic_light_detector:
+    roi_width_extent: 0.65  # ROI box width extension amount in meters
+    roi_height_extent: 0.55  # ROI box heigth extension amount in meters
+    min_roi_width: 50  # minimum ROI width in pixels, when classification makes sense
+    rectify_image: False  # the distortions of Mako cameras are so small they don't matter
+    transform_timeout: 0.06

@@ -9,17 +9,17 @@ In this practice, we are going to use a Rosbag file with three topics in it:
 
 After launching the `practice_5.launch` later, all other topics will come from your and other provided nodes. Your localizer will give the location on the map and publish the transform. The global planner will plan the path that is used by the follower. We will see the actions in vehicle_cmd that our stack would send to the car. These commands could be compared with the actual commands during the driving (provided in the bag), and this is one way to see how the code changes would influence the outcome.
 
-This practice focuses on obstacle detection. The raw lidar point cloud is taken from the rosbag; the ground removal node classifies it into `points_ground` and `points_no_ground` topics. After that, a `voxel_grid_filter`  will downsample points and produce a topic `/detection/lidar/points_filtered`. Your task is to take points in this topic and transform them to [`autoware_msg/DetectedObject`](https://github.com/autowarefoundation/autoware_ai_messages/blob/master/autoware_msgs/msg/DetectedObject.msg), so that these objects could be used in local planning (reacting to obstacles).
+This practice focuses on obstacle detection. The raw lidar point cloud is taken from the rosbag; the ground removal node classifies it into `points_ground` and `points_no_ground` topics. After that, a `voxel_grid_filter`  will downsample points and produce a topic `/detection/lidar/points_filtered`. Your task is to take points in this topic and transform them to `autoware_mini/DetectedObject`, so that these objects could be used in local planning (reacting to obstacles).
 
 To do that, You have to finalize two nodes:
 * `points_clusterer.py` - creates `sensor_msgs/PointCloud2` message with clustered points so that the message type will remain the same as in input.
-* `cluster_detector.py` - converts clustered point cloud to [`autoware_msg/DetectedObjectArray`](https://github.com/autowarefoundation/autoware_ai_messages/blob/master/autoware_msgs/msg/DetectedObjectArray.msg) that contains detected objects. The code itself with an empty callback is given.
+* `cluster_detector.py` - converts clustered point cloud to `autoware_mini/DetectedObjectArray` that contains detected objects. The code itself with an empty callback is given.
 
 
 #### Additional files
-- [launch/practice_5.launch](https://owncloud.ut.ee/owncloud/s/8JPDsc4fbnjk5Si) - a launch file that should run without errors at the end of the practice
-- [rviz/practice_5.rviz](https://owncloud.ut.ee/owncloud/s/4LBgWq55DXD8A7k) - RViz config file for visualizing the topics.
-- [config/detection.yaml](https://owncloud.ut.ee/owncloud/s/c2gW4rSrqioLbXL) - parameters for our detection nodes
+- [launch/practice_5.launch](launch/practice_5.launch) - a launch file that should run without errors at the end of the practice
+- [rviz/practice_5.rviz](rviz/practice_5.rviz) - RViz config file for visualizing the topics.
+- [config/detection.yaml](config/detection.yaml) - parameters for our detection nodes
 
 
 ### Expected outcome
@@ -37,9 +37,8 @@ To do that, You have to finalize two nodes:
    - an error message should be in the console saying that `points_clusterer` and `cluster_detector` nodes were not found (we will create the nodes later)
    - run `rqt` and explore the node graph (switch to `Nodes/Topics (all)`) - see how nodes and topics are connected.
       - Start from `/player`. It publishes `/lidar_center/points_raw` that goes to ground removal, and it publishes two topics: `points_no_ground` and `points_ground`, but nothing is using these - that is where your node should follow
-   - In rqt, add from the menu `Plugins/Visualization/TF Tree` - you should see available frames (map, base_link_lidar_center, ...) and how they are connected. Arrows connecting the frames represent the transforms; you can see what is publishing it next to them.
 
-   ![ros_grpah_tf_tree](images/ros_graph_tf_tree.png)
+   ![ros_graph](images/ros_graph.png)
 
 2. While still `roslaunch autoware_mini_practice_solutions practice_5.launch use_detection:=true` running investigate more closely the rviz visualizations
    - It might be helpful at some point to stop the playback of the rosbag - press space in the console where the `practice_5.launch` was launched
@@ -173,7 +172,7 @@ We want to publish the clustered point cloud so we can later analyze or debug th
 
 **Now we will switch to `cluster_detector` node.**
 
-This node takes in clustered points from `points_clusterer` node and converts them into [`autoware_msg/DetectedObject`](https://github.com/autowarefoundation/autoware_ai_messages/blob/master/autoware_msgs/msg/DetectedObject.msg) and publishes as the [`autoware_msg/DetectedObjectArray`](https://github.com/autowarefoundation/autoware_ai_messages/blob/master/autoware_msgs/msg/DetectedObjectArray.msg) in `detected_objects` topic.
+This node takes in clustered points from `points_clusterer` node and converts them into `autoware_mini/DetectedObject`and publishes as the `autoware_mini/DetectedObjectArray` in `detected_objects` topic.
 
 The template for node itself is available below, create the node under `node/detection/cluster_detector.py` as usual, and you are tasked to implement the contents in the `cluster_callback`.
 
@@ -189,7 +188,7 @@ from numpy.lib.recfunctions import structured_to_unstructured
 from ros_numpy import numpify, msgify
 
 from sensor_msgs.msg import PointCloud2
-from autoware_msgs.msg import DetectedObjectArray, DetectedObject
+from autoware_mini.msg import DetectedObjectArray, DetectedObject
 from std_msgs.msg import ColorRGBA, Header
 from geometry_msgs.msg import Point32
 
@@ -245,7 +244,7 @@ if __name__ == '__main__':
 4. To transform the `points`, the following steps are done
    - transform matrix is numpified and transposed (to match them in the `points` array)
    - `points` are turned into homogeneous coordinates
-   - dot product is used to transform the coordinates into needed `output_frame`
+   - dot product is used to transform the coordinates into needed `output_frame` via [transformation matrix](https://www.brainvoyager.com/bv/doc/UsersGuide/CoordsAndTransforms/SpatialTransformationMatrices.html) multiplication
    - add again printouts in the code:
       - print `tf_matrix`, `points` shape after the transform and the first line from `points` array
 
@@ -315,7 +314,7 @@ Additionally, for each object, we should:
 3. Verify that there are objects (clusters) present, if there are no objects, then empty detected object array should be published
 4. Loop over objects (clusters)
    - check if it has enough points; otherwise, skip this object
-   - calculate the centroid for each object (mean of points coordinates) - the result should be written to `DetectedObject.pose.position.x`, `DetectedObject.pose.position.y` and `DetectedObject.pose.position.z`
+   - calculate the centroid for each object (mean of points coordinates) - the result should be written to `DetectedObject.position.x`, `DetectedObject.position.y` and `DetectedObject.position.z`
    - calculate convex_hull for each object (see code below) - the result should be written to `DetectedObject.convex_hull.polygon.points`:
       - use only x and y coordinates, and create a shapely MultiPoint that has a function convex_hull (returns shapely polygon)
       - convert polygon to list of [`geometry_msg/Point32`](https://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/Point32.html) and use centroids z coordinate for all polygon points
@@ -335,8 +334,7 @@ Additionally, for each object, we should:
    object.label = "unknown"
    object.color = BLUE80P
    object.valid = True
-   object.space_frame = self.output_frame
-   object.pose_reliable = True
+   object.position_reliable = True
    object.velocity_reliable = False
    object.acceleration_reliable = False
    ```
@@ -351,7 +349,7 @@ Additionally, for each object, we should:
    - Blue centroids
    - Cluster borders for each object
    - Label `unknown` with the object id and the speed. Since there is no tracking, all the speeds are currently 0.
-* Clean the code and push it to your repo. When done, please send an email stating that you are ready for code review.
+* Clean the code and push it to your repo.
 
 ![detected_objects](images/detected_objects.png)
 

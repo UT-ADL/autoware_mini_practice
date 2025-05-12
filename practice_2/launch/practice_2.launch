@@ -1,0 +1,30 @@
+ <launch>
+    
+    <!-- Arguments, can be passed in using command line -->
+    <arg name="bag_file"        default="ride_14_minimal.bag" doc="bag file to play" />
+    <arg name="interval"        default="1.0"                 doc="Distance between recorded waypoints" />
+    <arg name="waypoints_file"  default="waypoints_1m.csv"    doc="waypoints file name" />
+
+    <!-- Nodes -->
+    <!-- Play rosbag -->
+    <node pkg="rosbag" type="play" name="player" required="true" args="$(find autoware_mini)/data/bags/$(arg bag_file)" />
+
+    <!-- Localizer -->
+    <group ns="localization">
+        <node pkg="autoware_mini_practice_solutions" type="localizer.py" name="localizer" output="screen" required="true" />
+    </group>
+
+    <group ns="planning">
+        <!-- Waypoint saver -->
+        <node pkg="autoware_mini" type="waypoint_saver.py" name="waypoint_saver" output="screen" required="true" >
+            <param name="interval"          value="$(arg interval)" />
+            <param name="waypoints_file"    value="$(find autoware_mini)/data/trajectories/$(arg waypoints_file)" />
+        </node>
+    </group>
+    <!-- Rviz -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find autoware_mini_practice_solutions)/rviz/practice_2.rviz" required="true" />
+
+    <!-- Config -->
+    <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/localization.yaml" ns="localization"/>
+
+</launch>

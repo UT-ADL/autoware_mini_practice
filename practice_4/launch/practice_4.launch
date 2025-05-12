@@ -1,0 +1,52 @@
+<launch>
+    
+    <!-- Arguments, can be passed in using command line -->
+    <arg name="waypoints_file"      default="waypoints_1m.csv"  doc="waypoints file name" />
+    <arg name="lookahead_distance"  default="5"                 doc="lookahead distance" />
+    <arg name="lanelet2_map_name"   default="tartu_demo.osm"    doc="map file name" />
+    <arg name="speed_limit"         default="40"                doc="speed limit in km/h" />
+    <arg name="enable_auto_stop_checker" default="true"         doc="enable auto stop checker" />
+
+    <!-- Nodes -->
+
+    <group ns="planning">
+        <!-- Global planner -->
+        <node pkg="autoware_mini_practice_solutions" type="lanelet2_global_planner.py" name="global_planner" output="screen" required="true" >
+            <param name="lanelet2_map_name"  value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
+            <param name="speed_limit"  value="$(arg speed_limit)" />
+        </node>
+        <!-- Global path visualizer -->
+        <node pkg="autoware_mini" type="global_path_visualizer.py" name="global_path_visualizer" output="screen" required="true" />
+        <!-- Map visualizer -->
+        <node pkg="autoware_mini" type="lanelet2_map_visualizer.py" name="lanelet2_map_visualizer" output="screen" required="true" >
+            <param name="lanelet2_map_name"  value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
+            <param name="enable_auto_stop_checker" value="$(arg enable_auto_stop_checker)" />
+        </node>
+
+        <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/planning.yaml"/>
+    </group>
+
+    <group ns="control">
+        <!-- Waypoint follower -->
+        <node pkg="autoware_mini_practice_solutions" type="pure_pursuit_follower.py" name="pure_pursuit_follower" output="screen" required="true" >
+            <remap from="path" to="/planning/global_path" />
+        </node>
+        <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/control.yaml"/>
+    </group>
+
+    <group ns="vehicle">
+        <!-- Bicycle_model simulator -->
+        <node pkg="autoware_mini" type="bicycle_simulation.py" name="bicycle_simulation" output="screen" required="true">
+            <param name="lanelet2_map_name" value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
+        </node>
+
+        <rosparam command="load" file="$(find autoware_mini)/config/vehicle.yaml" />
+    </group>
+
+    <!-- Rviz -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find autoware_mini_practice_solutions)/rviz/practice_4.rviz" required="true" />
+
+    <!-- Config -->
+    <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/localization.yaml" ns="localization"/>
+
+</launch>

@@ -2,7 +2,7 @@
 
 # Practice 3 - Controller
 
-In this practice, we will implement a simple path-following algorithm (controller) called Pure Pursuit. Path following is about staying on the path as accurately as possible while driving the car. We can only control the vehicle through the steering angle (lateral control) and speed (longitudinal control). Your task is implementing the Pure Pursuit algorithm that produces the steering angles to keep the car on the path. Velocities will be taken from the recorded path (result of practice 2).
+In this practice, we will implement a simple path-following algorithm (controller) called Pure Pursuit. Path following is about staying on the path as accurately as possible while driving the car. We can control the vehicle through the steering angle (lateral control) and speed (longitudinal control). Your task is implementing the Pure Pursuit algorithm that produces the steering angles to keep the car on the path. Velocities will be taken from the recorded path (result of practice 2).
 
 Output from your node (steering angle and speed) will go into the `bicycle_simulation` node (that we reuse from `autoware_mini`). It will calculate and update where the vehicle will be in the next time step and its speed and orientation based on the vehicle's current position and commands from your controller node.
 
@@ -11,15 +11,15 @@ More about Pure Pursuit:
 * [Pure Pursuit](https://thomasfermi.github.io/Algorithms-for-Automated-Driving/Control/PurePursuit.html)
 
 #### Additional files provided
-   - [launch/practice_3.launch](https://owncloud.ut.ee/owncloud/s/geyTc6mP8Tnd76D) - a launch file that should run without errors at the end of the practice
-   - [rviz/practice_3.rviz](https://owncloud.ut.ee/owncloud/s/img7K2WC4J26EBF) - RViz config file for visualizing the topics.
-   - [config/control.yaml](https://owncloud.ut.ee/owncloud/s/LLtGg3KtYtijCpD) - parameters for our control node
-   - [config/planning.yaml](https://owncloud.ut.ee/owncloud/s/oiicrJfAqTZ7qzr) - some of the parameters for `waypoint_loader` utility node are taken from that file
+   - [launch/practice_3.launch](launch/practice_3.launch) - a launch file that should run without errors at the end of the practice
+   - [rviz/practice_3.rviz](rviz/practice_3.rviz) - RViz config file for visualizing the topics.
+   - [config/control.yaml](config/control.yaml) - parameters for our control node
+   - [config/planning.yaml](config/planning.yaml) - some of the parameters for `waypoint_loader` utility node are taken from that file
 
 
 ### Expected outcome
 * Understanding about the general task of the vehicle's lateral control
-* The ego vehicle can follow the recorded waypoints (path) from practice_2. Theoretically, the same simple controller could be used with a real car.
+* The ego vehicle can follow the recorded waypoints (path) from practice_2. Theoretically, the same simple controller could be used with a real car, where low-level drivers will interpret provided longitudinal and lateral commands and control the vehicle accordingly.
 
 
 ## 1. Preparation
@@ -33,7 +33,7 @@ More about Pure Pursuit:
 ##### Validation
 * run `roslaunch autoware_mini_practice_solutions practice_3.launch`
    - should load the waypoints (uses default file name) created in previous practice and visualize them in rviz (path with waypoints, blinker information and speed values at the waypoints)
-   - if you don't have a waypoint file in your common package, you should be able to create it any time by running `roslaunch autoware_mini_practice_solutions practice_2.launch`. The assumption is that you have finilized your localizer node in practice 2.
+   - if you don't have a waypoint file in your common package, you should be able to create it any time by running `roslaunch autoware_mini_practice_solutions practice_2.launch`. The assumption is that you have finalized your localizer node in practice 2.
 
 ![loaded waypoints](images/load_practice_3.png)
 
@@ -53,7 +53,7 @@ After running `roslaunch autoware_mini_practice_solutions practice_3.launch`, we
 ```
 import rospy
 
-from autoware_msgs.msg import Lane
+from autoware_mini.msg import Path
 from geometry_msgs.msg import PoseStamped
 
 class PurePursuitFollower:
@@ -64,7 +64,7 @@ class PurePursuitFollower:
         # Publishers
 
         # Subscribers
-        rospy.Subscriber('path', Lane, self.path_callback, queue_size=1)
+        rospy.Subscriber('path', Path, self.path_callback, queue_size=1)
         rospy.Subscriber('/localization/current_pose', PoseStamped, self.current_pose_callback, queue_size=1)
 
     def path_callback(self, msg):
@@ -117,7 +117,7 @@ We need to publish the vehicle command from the `pure_pursuit_follower`, and the
 In this step, we will publish constant values to confirm that the ego vehicle will start to drive and that this cycle between the simulator node and the follower node works.
 
 ##### Instructions
-1. Create Publisher for the vehicle command topic `/control/vehicle_cmd`, message type [autoware_msg/VehicleCmd](https://github.com/streetdrone-home/Autoware/blob/master/ros/src/msgs/autoware_msgs/msg/VehicleCmd.msg)
+1. Create Publisher for the vehicle command topic `/control/vehicle_cmd`, message type autoware_mini/VehicleCmd
 2. Create the message and fill in the `linear_velocity` (speed) and `steering_angle` with some constant values
 
 ```
@@ -178,7 +178,7 @@ from shapely.geometry import LineString, Point
 from shapely import prepare, distance
 
 # convert waypoints to shapely linestring
-path_linestring = LineString([(w.pose.pose.position.x, w.pose.pose.position.y) for w in msg.waypoints])
+path_linestring = LineString([(w.position.x, w.position.y) for w in msg.waypoints])
 # prepare path - creates spatial tree, making the spatial queries more efficient
 prepare(path_linestring)
 ```
@@ -195,7 +195,7 @@ d_ego_from_path_start = self.path_linstring.project(current_pose)
 ``` 
 
 4. Remove previous printouts and add another one printing out `d_ego_from_path_start`
-5. You can test running the `practice_3.launch` and occasionally see the error in the console log (see below). It appears when the path_callback does not manage to assign value to `self.path_linestring` (you might have named it differently), and it is already being used in `current_pose_callback`. Fix it by checking if the value is not set the `current_pose_callback` should return.
+5. You can test running the `practice_3.launch` and occasionally see the error in the console log (see below). It appears when the path_callback does not manage to assign value to `self.path_linestring` (you might have named it differently), and it is already being used in `current_pose_callback`. Fix it by checking if the value is not `None` before using it in the callback.
 
 ```
 d_ego_from_path_start = self.path_linestring.project(current_pose)
@@ -290,13 +290,13 @@ from scipy.interpolate import interp1d
 
 # Create a distance to velocity interpolator for the path
 # collect waypoint x and y coordinates
-waypoints_xy = np.array([(w.pose.pose.position.x, w.pose.pose.position.y) for w in msg.waypoints])
+waypoints_xy = np.array([(w.position.x, w.position.y) for w in msg.waypoints])
 # Calculate distances between points
 distances = np.cumsum(np.sqrt(np.sum(np.diff(waypoints_xy, axis=0)**2, axis=1)))
 # add 0 distance in the beginning
 distances = np.insert(distances, 0, 0)
 # Extract velocity values at waypoints
-velocities = np.array([w.twist.twist.linear.x for w in msg.waypoints])
+velocities = np.array([w.speed for w in msg.waypoints])
 ```
 
 4. Now you have `distances` and respective `velocities`. You are ready to create the function. We can use `interp1d` from the [scipy library](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp1d.html#scipy.interpolate.interp1d).
@@ -318,4 +318,4 @@ velocity = distance_to_velocity_interpolator(d_ego_from_path_start)
 * Place the ego vehicle at the start of the path (use **2D Pose Estimate** button in rviz), and it should start following the path, and the speed should reflect the moment of recording the bag.
 * If everything works without errors, clean the code (remove unnecessary debugging printouts) and commit to your repo!
 * run it with different lookahead distance by changing `lookahead_distance: 20.0` in `control.yaml`
-   - Is the behaviour different? What is different and why? Send the answer when all the code is finalized and committed with the email, along with the notification that the code is ready for review.
+- Is the behaviour different? What is different and why? Add the answer when all the code is finalized in the commit message.
