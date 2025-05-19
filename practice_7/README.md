@@ -543,21 +543,17 @@ Now we have the predictions! As we can see, there is a list with 4 numbers for e
 
 ## 7. Add functionality to the local planner
 
-We now have the traffic light results, but we still need the logic in the local planner to act upon them. For this, we generalize the existing collision points logic to process traffic light stop lines.
+We now have the traffic light results, but we still need the logic in the local planner to act upon them. For this, we add another type of collision points to `collision_points_manager` node. The overall process is similar to the task 9 from the previous practice.
 
 ##### Instructions
-1. Create a new node called `traffic_light_stopline_checker.py` under `planning/local`. Refer to traffic light detector node to:
-   - load the lanelet2 map
-   - use function `get_stoplines(lanelet2_map)` and extract all the stoplines. This will return key (stopline_id) value (geometry - shapely line string) pairs of all stop lines in the map.
-2. As with previous collision points processor nodes subscribe to `extracted_local_path`. Add subscribers for `/localization/current_velocity` and `/detection/traffic_light_status`
-    - collect the blocking stop lines - `stopline_id` is saved into `result.lane_id`
-    - `recognition_result` is set to 0 for (RED) and (YELLOW)
-    
-3. Use local path subscriber callback as the main function for all logic. 
-    - check if the local path is empty or velocity of the vehicle is None, if so, return
-    - for each blocking traffic light stop line, check if it intersects with the local path, if so create a new collision point object and add it to the array of collision points (location - location of the intersection, velocity - zero, distance to stop is equal to `braking_safety_distance_stopline`)
-    - set `deceleration_limit` to `tfl_maximum_deceleration` parameter, and category to `TRAFFIC_LIGHT_STOPLINE`
-    - publish the collision points
+1. Lookup in the `planning.yaml` config the rest of the parameters that are needed for the traffic light stop line collision points creation. 
+2. Create subscriber to `/detection/traffic_light_status` topic that copies and stores the results of traffic light detection method.
+```
+rospy.Subscriber('/detection/traffic_light_status', TrafficLightResultArray, self.traffic_light_status_callback, queue_size=1, tcp_nodelay=True)
+```
+3. Add corresponding logic for converting the traffic light status to collision points. The logic is similar to the one used for the goal point collision points: we need to find if the buffered local path intersects with traffic light location, and if the traffic light status `stopline_statuses[stopline_id]` is red or yellow.
+4. Correctly initialize the collision points setting the `collision_pdistance_to_stop = self.braking_safety_distance_stoplineoint_type`, `deceleration_limit = np.inf`, and `category = 2`.
+5. Append the collision point to the array of collision points in the `collision_points_manager` node before publishing it as `PointCloud2` message.
 
 ##### Validation
 * run `roslaunch autoware_mini_practice_solutions practice_7.launch tfl_detector:=camera`

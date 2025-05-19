@@ -1,3 +1,4 @@
+current_pose_to_car_front: 4.0  # m
 braking_reaction_time: 1.6
 waypoint_interval: 1.0          # m
 default_acceleration: 1.0       # m/s2
@@ -28,18 +29,12 @@ local_path_extractor:
   publish_rate: 10                        # Hz
   lookahead_distance: 10                  # m
   distance_to_lookahead_path_limit: 2.5   # m
-goal_stop_checker:
-  braking_safety_distance_goal: 0.1       # m
-object_collision_checker:
+collision_points_manager:
   braking_safety_distance_obstacle: 4     # m
-traffic_light_stopline_checker:
+  braking_safety_distance_goal: 0.1       # m
   braking_safety_distance_stopline: 2     # m
   tfl_force_stop_speed_limit: 5.0         # km/h
   tfl_maximum_deceleration: 2.8           # m/s2
-
-collision_points_merger:
-  synchronization_queue_size: 4
-  synchronization_slop: 0.15
-speed_planner:
+simple_speed_planner:
   synchronization_queue_size: 4
   synchronization_slop: 0.15

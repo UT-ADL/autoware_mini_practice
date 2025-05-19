@@ -10,9 +10,6 @@
     <arg name="use_control"             default="true" />
     <arg name="use_tracking"            default="false" />
     <arg name="use_local_planner"       default="true" />
-    <arg name="synchronization_method"  default="approximate"   doc="approximate or exact" />
-    <arg name="enable_object_checker"   default="true"          doc="enable object checker" />
-    <arg name="enable_goal_checker"     default="false"         doc="enable goal checker" />
     <arg name="enable_auto_stop_checker" default="true"         doc="enable auto stop checker" />
 
 
@@ -51,22 +48,11 @@
         <group>
             <node pkg="autoware_mini_practice_solutions" type="local_path_extractor.py" name="local_path_extractor" output="screen" required="true" />
 
-            <node if="$(arg enable_goal_checker)" pkg="autoware_mini_practice_solutions" type="goal_stop_checker.py" name="goal_stop_checker" output="screen" required="true" />
-            <node if="$(arg enable_object_checker)" pkg="autoware_mini_practice_solutions" type="object_collision_checker.py" name="object_collision_checker" output="screen" required="true" />
+            <node pkg="autoware_mini_practice_solutions" type="collision_points_manager.py" name="collision_points_manager" output="screen" required="true">
+                <param name="lanelet2_map_name" value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
+            </node>
 
-            <node pkg="autoware_mini" type="collision_points_merger.py" name="collision_points_merger" output="screen" required="true" >
-                <param name="synchronization_method"        value="$(arg synchronization_method)" />
-                <param name="enable_goal_checker"           value="$(arg enable_goal_checker)"/>
-                <param name="enable_object_checker"         value="$(arg enable_object_checker)"/>
-                <param name="enable_auto_stop_checker"      value="false"/>
-                <param name="enable_traffic_light_checker"  value="false"/>
-                <param name="enable_crosswalk_checker"      value="false"/>
-                <param name="enable_yielding_checker"       value="false"/>
-                <param name="enable_trajectory_checker"     value="false"/>
-            </node>
-            <node pkg="autoware_mini_practice_solutions" type="simple_speed_planner.py" name="speed_planner" output="screen" required="true" >
-                <param name="synchronization_method" value="$(arg synchronization_method)" />
-            </node>
+            <node pkg="autoware_mini_practice_solutions" type="simple_speed_planner.py" name="simple_speed_planner" output="screen" required="true" />
         </group>
         <!-- Local path visualizer -->
         <node pkg="autoware_mini" type="local_path_visualizer.py" name="local_path_visualizer" output="screen" required="true"/>
