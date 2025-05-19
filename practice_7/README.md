@@ -2,7 +2,7 @@
 
 # Practice 7 - Traffic light detection
 
-The task for this practice is to implement camera-based traffic light detection. You will use the rosbag, and your task is to implement parts of the  `camera_traffic_light_detector` node and add traffic light support to the `simple_local_planner` node. 
+The task for this practice is to implement camera-based traffic light detection. You will use the rosbag, and your task is to implement parts of the  `camera_traffic_light_detector` node and add traffic light support to the local planner. 
 
 The main functionality of the `camera_traffic_light_detector` node:
 * subscribe to the camera image topic
@@ -21,8 +21,8 @@ Additionally, you will need to add additional small node that will process stopp
 
 ### Expected outcome
 * Understand how the traffic light bounding box images are extracted from the image and how they are sent to the neural network model for classification.
-* Understanding the local planner's role in reacting to the traffic light status.
 * A node that extracts bounding box images of traffic lights and outputs the classification results for the local planner to react to traffic lights' changing statuses.
+* Understanding how the traffic light statuses are converted to collision points in the local planner.
 
 
 
@@ -291,7 +291,7 @@ We have to do it in `camera_image_callback` - whenever a new image appears, this
 
 * To the `.../traffic_light_roi` topic, an image is published, and there is already an existing publisher for that `self.tfl_roi_pub`. The image should be overlayed with bounding boxes that are coloured according to classification results. You should use the existing function `publish_roi_images` for image publishing.
 
-   ![image_roi_overlay](images/image_roi_overaly.png)
+   ![image_roi_overlay](images/image_roi_overlay.png)
 
 * `.../traffic_light_status` topic has traffic light results in [`TrafficLightResultArray`](https://github.com/autowarefoundation/autoware_ai_messages/blob/master/autoware_msgs/msg/TrafficLightResultArray.msg) that contains [`TrafficLightResult`](https://github.com/autowarefoundation/autoware_ai_messages/blob/master/autoware_msgs/msg/TrafficLightResult.msg) message, and the publisher for that one is `self.tfl_status_pub`.
 
@@ -559,26 +559,9 @@ rospy.Subscriber('/detection/traffic_light_status', TrafficLightResultArray, sel
 * run `roslaunch autoware_mini_practice_solutions practice_7.launch tfl_detector:=camera`
 * put the rosbag play into pause (hit space in the console) and add the goal point further than the stop line on the path
 * in the second console run: `rostopic echo /detection/traffic_light_status | grep recognition_result_str`
-* Continue playing with the bag and see how the statuses are printed out. Below, only the last stop line status printouts are brought
-
-
-    ```
-    ...
-        recognition_result_str: "GREEN cam"
-        recognition_result_str: "GREEN cam"
-        recognition_result_str: "GREEN cam"
-        recognition_result_str: "GREEN cam"
-        recognition_result_str: "RED cam"
-        recognition_result_str: "RED cam"
-        recognition_result_str: "GREEN cam"
-        recognition_result_str: "GREEN cam"
-        recognition_result_str: "GREEN cam"
-    ```
-* Notice that just before crossing the stop line, there are two red detections, and in sync with that is the target velocity that drops to 0.
-
-    ![tfl_red_target_v](images/tfl_red_target_v.png)
-
-
+* Continue playing with the bag and see how the statuses are printed out.
+* Notice that we slowly slow down before second traffic light, as it is red. Your closest object distance value in rviz should smoothly descent, together with the required target speed, before coming to stop at exactly the projected stopline.
+* Play the whole bag out and see how your planner react to every red traffic light occurence. You can monitor your planner behaviour by the `target_velocity` and `closest_object_distance` in the RViz, or open the rqt topic monitor and look at what is published by your collision points manager.
 
 [//]: # (## 8. Check the deceleration)
 
@@ -621,4 +604,5 @@ rospy.Subscriber('/detection/traffic_light_status', TrafficLightResultArray, sel
 
 
 ### Finalize the code
-* Clean the code of any debugging printouts and add comments where necessary .
+* Clean the code of any debugging printouts and add comments where necessary.
+* Commit the code to git and push it to your remote repository.

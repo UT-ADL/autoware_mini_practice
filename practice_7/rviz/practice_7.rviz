@@ -92,7 +92,7 @@ Visualization Manager:
             Expand Tree: false
             Link Tree Style: Links in Alphabetic Order
           Name: Lexus model
-          Robot Description: robot_description
+          Robot Description: lexus_model/robot_description
           TF Prefix: ""
           Update Interval: 0
           Value: true
@@ -586,6 +586,21 @@ Visualization Manager:
           Enabled: true
           Marker Topic: /planning/lanelet2_map_markers
           Name: Lanelet2 map
+          Namespaces:
+            Centerline: true
+            Crosswalk: true
+            Left boundary: true
+            Right boundary: true
+            Stop line: true
+            Traffic lights: true
+            Yield line: false
+          Queue Size: 100
+          Value: true
+
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /planning/tfl_stop_line_markers
+          Name: Lanelet2 map tfl markers
           Namespaces:
             Centerline: true
             Crosswalk: true

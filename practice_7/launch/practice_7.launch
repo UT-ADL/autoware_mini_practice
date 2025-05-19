@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     
-    <arg name="bag_file"                default="2023-05-08-14-46-13_raw_data_tfl_radar_raekoda.bag" doc="bag file to play" />
+    <arg name="bag_file"                default="2025-02-21-10-13-51_Bolt_demo_run_01.bag" doc="bag file to play" />
     <arg name="speed_limit"             default="40" />
     <arg name="tfl_detector"            default="camera"        doc="camera, mqtt, mqtt_camera_fusion" />
     <arg name="lanelet2_map_name"       default="tartu_large.osm" />
@@ -45,10 +45,13 @@
         <remap from="/detection/final_objects" to="/bag/detection/final_objects" if="$(arg use_detection)"/>
         <remap from="/detection/final_objects_markers" to="/bag/detection/final_objects_markers" if="$(arg use_detection)"/>
         <remap from="/planning/lanelet2_map_markers" to="/bag/planning/lanelet2_map_markers" if="$(arg use_planning)"/>
+        <remap from="/planning/tfl_stop_line_markers" to="/bag/planning/tfl_stop_line_markers" if="$(arg use_detection)"/>
+        <remap from="/planning/yield_stop_line_markers" to="/bag/planning/yield_stop_line_markers" if="$(arg use_planning)"/>
         <remap from="/planning/global_path" to="/bag/planning/global_path" if="$(arg use_planning)"/>
         <remap from="/planning/global_path_markers" to="/bag/planning/global_path_markers" if="$(arg use_planning)"/>
-        <remap from="/planning/smoothed_path" to="/bag/planning/smoothed_path" if="$(arg use_planning)"/>
-        <remap from="/planning/smoothed_path_markers" to="/bag/planning/smoothed_path_markers" if="$(arg use_planning)"/>
+        <remap from="/planning/extracted_local_path" to="/bag/planning/extracted_local_path" if="$(arg use_planning)"/>
+        <remap from="/planning/extracted_local_path" to="/bag/planning/extracted_local_path" if="$(arg use_planning)"/>
+        <remap from="/planning/collision_points" to="/bag/planning/collision_points" if="$(arg use_planning)"/>
         <remap from="/planning/local_path" to="/bag/planning/local_path" if="$(arg use_planning)"/>
         <remap from="/planning/local_path_markers" to="/bag/planning/local_path_markers" if="$(arg use_planning)"/>
         <remap from="/planning/stop_line_markers" to="/bag/planning/stop_line_markers" if="$(arg use_planning)"/>
@@ -58,6 +61,10 @@
         <remap from="/detection/camera_fl/traffic_light_roi" to="/bag/detection/camera_fl/traffic_light_roi" />
         <remap from="/detection/camera_fr/traffic_light_status" to="/bag/detection/camera_fr/traffic_light_status" />
         <remap from="/detection/camera_fr/traffic_light_roi" to="/bag/detection/camera_fr/traffic_light_roi" />
+        <remap from="/detection/camera1/traffic_light_status" to="/bag/detection/camera1/traffic_light_status" if="$(arg use_detection)"/>
+        <remap from="/detection/camera1/traffic_light_roi" to="/bag/detection/camera1/traffic_light_roi" if="$(arg use_detection)"/>
+        <remap from="/detection/camera2/traffic_light_status" to="/bag/detection/camera2/traffic_light_status" if="$(arg use_detection)"/>
+        <remap from="/detection/camera2/traffic_light_roi" to="/bag/detection/camera2/traffic_light_roi" if="$(arg use_detection)"/>
         <remap from="/detection/camera/traffic_light_status" to="/bag/detection/camera/traffic_light_status" />
         <remap from="/detection/mqtt/traffic_light_status" to="/bag/detection/mqtt/traffic_light_status" />
         <remap from="/control/vehicle_cmd" to="/bag/control/vehicle_cmd" if="$(arg use_control)"/>
@@ -203,6 +210,12 @@
       <param name="robot_description" textfile="$(find autoware_mini)/config/urdf/lexus.urdf" />
       <node pkg="robot_state_publisher" type="robot_state_publisher" name="vehicle_platform_frames_publisher" />
     </group>
+
+    <group ns="lexus_model">
+    	<param name="robot_description" textfile="$(find autoware_mini)/config/urdf/lexus_model.urdf" />
+	    <node pkg="robot_state_publisher" type="robot_state_publisher" name="lexus_model_state_publisher" output="screen" required="true" />
+    </group>
+
 
     <include file="$(find autoware_mini)/launch/dashboard.launch" />
 

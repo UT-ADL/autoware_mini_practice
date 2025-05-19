@@ -290,7 +290,7 @@ if __name__ == '__main__':
    - `x`, `y`, `z` - coordinates of the collision point
    - `vx`, `vy`, `vz` - velocity of the collision point
    - `distance_to_stop` - distance at which car should stop before the collision point, in case of moving collision points, this is the distance the car will follow them at the same speed
-   - `deceleration_limit` - deceleration limit, different collision points tyoes require different severity for deceleration
+   - `deceleration_limit` - deceleration limit, different collision points tyoes require different severity for deceleration (unused in these practices - set to `np.inf` for all categories)
    - `category` - category of the object, in these practices we are interested mainly in four categories: `0` - not an obstacle, `1` - goal point, `2` - traffic light' stop line, `3` - static obstacle, `4` - moving obstacle. These are mainly used for visualization purposes, while 2 previous parameters are used for the main speed planner logic.
 5. Your task is to populate `path_callback` function that takes the extracted local path and detected objects and checks if any of the detected objects convex hulls are within the buffered local path. It then creates a `PointCloud2` message with the coordinates of the collision points - intersections, and publishes it.
 6. Start by creation Shapely `Linestring` from the local path message. Don't forget to check if it is empty and if the detected objects are empty as well. In either of these cases, publish an empty `PointCloud2` message with header used in the local path message.

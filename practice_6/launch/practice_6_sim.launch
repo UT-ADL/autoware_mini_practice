@@ -97,6 +97,12 @@
       <node pkg="robot_state_publisher" type="robot_state_publisher" name="vehicle_platform_frames_publisher" />
     </group>
 
+    <group ns="lexus_model">
+    	<param name="robot_description" textfile="$(find autoware_mini)/config/urdf/lexus_model.urdf" />
+	    <node pkg="robot_state_publisher" type="robot_state_publisher" name="lexus_model_state_publisher" output="screen" required="true" />
+    </group>
+
+
     <include file="$(find autoware_mini)/launch/dashboard.launch" />
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find autoware_mini_practice_solutions)/rviz/practice_6.rviz" required="true" />
 
