@@ -38,5 +38,5 @@ This repo serves as an introduction to Autoware Mini. There are 8 practices that
    * `git commit -m "your commit message"`
    * `git push`
    * `git pull`
-* We suggest regularily pushing your work into your GitHub repo.
-* All the assesment of your progress will be done by reviewing your code in your GitHub repo created in Practice 1.
+* We suggest regularly pushing your work into your GitHub repo.
+* All the assessment of your progress will be done by reviewing your code in your GitHub repo created in Practice 1.
