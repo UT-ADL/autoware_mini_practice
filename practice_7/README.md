@@ -323,7 +323,7 @@ As a starting point in this task, we will assume first that there are no traffic
 
 ## 3. Get the stop lines on the path
 
-In the next step, we want to know if our path has stop lines linked with traffic lights. The stop line determines the stopping point and related traffic lights should all show the same status, weather it is red, yellow, greem etc. The information on traffic light locations and to which stop line status they determine is recorded in the lanelet2 map relations. We will use the lanelet2 map and extract relevant traffic lights to the global variable `self.tfl_stoplines` by checking which stop lines intersect with local path. `self.tfl_stoplines` should be the dictionary containing `stoplineId` as the key and stop line geometry (shapely line string) as a value.
+In the next step, we want to know if our path has stop lines linked with traffic lights. The stop line determines the stopping point and related traffic lights should all show the same status, weather it is red, yellow, green etc. The information on traffic light locations and to which stop line status they determine is recorded in the lanelet2 map relations. We will use the lanelet2 map and extract relevant traffic lights to the global variable `self.tfl_stoplines` by checking which stop lines intersect with local path. `self.tfl_stoplines` should be the dictionary containing `stoplineId` as the key and stop line geometry (shapely line string) as a value.
 
 
 ##### Instructions
@@ -363,7 +363,7 @@ It should be evident that cameras can have
 2. Under the previous check, use the already created transform listener to extract the `transform`
     - transform **to** frame should be taken from camera image message
     - transform **from** frame is taken from the local path and should be already present as local variable `transform_from_frame`
-    - You can use [Task 5, point 3](../practice_5/README.md#5-get-data-in-cluser_detector-node) as an example of how to get transform
+    - You can use [Task 5, point 3](../practice_5/README.md#5-get-data-in-cluster_detector-node) as an example of how to get transform
 3. To get the rois use `self.calculate_roi_coordinates` function by passing on `stoplines_on_path` and `transform`
 4. Copy the code below into the `calculate_roi_coordinates` function and remove the `pass`
 
