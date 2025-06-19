@@ -290,7 +290,7 @@ if __name__ == '__main__':
    - `x`, `y`, `z` - coordinates of the collision point
    - `vx`, `vy`, `vz` - velocity of the collision point
    - `distance_to_stop` - distance at which car should stop before the collision point, in case of moving collision points, this is the distance the car will follow them at the same speed
-   - `deceleration_limit` - deceleration limit, different collision points tyoes require different severity for deceleration (unused in these practices - set to `np.inf` for all categories)
+   - `deceleration_limit` - deceleration limit, different collision points types require different severity for deceleration (unused in these practices - set to `np.inf` for all categories)
    - `category` - category of the object, in these practices we are interested mainly in four categories: `0` - not an obstacle, `1` - goal point, `2` - traffic light' stop line, `3` - static obstacle, `4` - moving obstacle. These are mainly used for visualization purposes, while 2 previous parameters are used for the main speed planner logic.
 5. Your task is to populate `path_callback` function that takes the extracted local path and detected objects and checks if any of the detected objects convex hulls are within the buffered local path. It then creates a `PointCloud2` message with the coordinates of the collision points - intersections, and publishes it.
 6. Start by creation Shapely `Linestring` from the local path message. Don't forget to check if it is empty and if the detected objects are empty as well. In either of these cases, publish an empty `PointCloud2` message with header used in the local path message.
@@ -314,7 +314,7 @@ for x, y in intersection_points:
 Part 1
 
 * Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch`
-* Local path should be exactly the with of the local path buffer
+* Local path should be exactly the width of the local path buffer
 * Place destination and experiment by placing the simulated obstacles on the path and see 
    - how many collision points are printed out (try putting simulated obstacles on the edge of the local path buffer)
    - how many points are printed for one obstacle (4, 5, 6) (does it change when it is on buffer edge?)
@@ -325,7 +325,7 @@ Part 2
 
 * Run `roslaunch autoware_mini_practice_solutions practice_6_bag.launch`
 * Set the goal point along the driving direction
-* Wait for the first intersection when the car turns in front of the ego vehicle, and it starts to print out the resulting coll. The first coordinates should be similar to the ones below:
+* Wait for the first intersection when the car turns in front of the ego vehicle, and it starts to print out the resulting collision points. The first coordinates should be similar to the ones below:
  
 
    ```
@@ -633,7 +633,7 @@ As the last step, we will add a goal point as a collision point. There are two t
 3. In the main `path_callback` function, add the processing of the goal waypoint as another collision point that manager publishes. 
    - Check if the goal point is within the buffered local path. (hint: use Shapely `touches` function)
    - Correctly initialize the `distance_to_stop=self.braking_safety_distance_goal` and `deceleration_limit=np.inf` values. The `category` should be set to `1` for the goal point.
-4. Modify your logic about handling the exceptions is `collision_points_manager` node - it should still publish collision points if either goal point is present, or obstacles are present, but not publish anything when there is no extracted local path.
+4. Modify your logic about handling the exceptions in `collision_points_manager` node - it should still publish collision points if either goal point is present, or obstacles are present, but not publish anything when there is no extracted local path.
 
 ##### Validation
 
