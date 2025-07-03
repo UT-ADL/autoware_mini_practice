@@ -2,16 +2,16 @@
 
 # Practice 5 - Obstacle detection
 
-In this practice, we are going to use a Rosbag file with three topics in it:
+In this practice, we are going to use a ROSbag file with three topics in it:
 * raw point cloud (`/lidar_center/points_raw`)
 * GNSS log (`/novatel/oem7/inspva`)
 * vehicle_cmd during the recording (`/bag/vehicle_cmd`)
 
-After launching the `practice_5.launch` later, all other topics will come from your and other provided nodes. Your localizer will give the location on the map and publish the transform. The global planner will plan the path that is used by the follower. We will see the actions in vehicle_cmd that our stack would send to the car. These commands could be compared with the actual commands during the driving (provided in the bag), and this is one way to see how the code changes would influence the outcome.
+After launching the `practice_5.launch` later, all other topics will come from your and other provided nodes. Your localizer will give the location on the map and publish the transform. The global planner will plan the path that the follower uses. We will see the actions in vehicle_cmd that our stack would send to the car. These commands could be compared with the actual commands during the driving (provided in the bag), and this is one way to see how the code changes would influence the outcome.
 
-This practice focuses on obstacle detection. The raw lidar point cloud is taken from the rosbag; the ground removal node classifies it into `points_ground` and `points_no_ground` topics. After that, a `voxel_grid_filter`  will downsample points and produce a topic `/detection/lidar/points_filtered`. Your task is to take points in this topic and transform them to `autoware_mini/DetectedObject`, so that these objects could be used in local planning (reacting to obstacles).
+This practice focuses on obstacle detection. The raw lidar point cloud is taken from the rosbag; the ground removal node classifies it into `points_ground` and `points_no_ground` topics. After that, a `voxel_grid_filter`  will downsample points and produce a topic `/detection/lidar/points_filtered`. Your task is to take points from this topic and transform them to `autoware_mini/DetectedObject` so that these objects can be used in local planning (reacting to obstacles).
 
-To do that, You have to finalize two nodes:
+To do that, you have to finalize two nodes:
 * `points_clusterer.py` - creates `sensor_msgs/PointCloud2` message with clustered points so that the message type will remain the same as in input.
 * `cluster_detector.py` - converts clustered point cloud to `autoware_mini/DetectedObjectArray` that contains detected objects. The code itself with an empty callback is given.
 
@@ -30,23 +30,23 @@ To do that, You have to finalize two nodes:
 
 ## 1. Preparation
 
-1. run `roslaunch autoware_mini_practice_solutions practice_5.launch use_detection:=true`
-   - visualization in rviz should show a red arrow (location of current_pose), lanelet2 map, and lidar point cloud around the current pose
+1. Run `roslaunch autoware_mini_practice_solutions practice_5.launch use_detection:=true`
+   - Visualization in RViz should show a red arrow (location of current_pose), a lanelet2 map, and lidar point cloud around the current pose
    - You should be able to set the goal point (note your log message about receiving the goal). Hint: if you hit space in the console window where you launched `practice_5.launch`, the rosbag play goes into a pause, and it might be easier to set the goal point.
    - If the ego vehicle reaches the goal point, the path should be cleared, and the information message should be displayed.
-   - an error message should be in the console saying that `points_clusterer` and `cluster_detector` nodes were not found (we will create the nodes later)
-   - run `rqt` and explore the node graph (switch to `Nodes/Topics (all)`) - see how nodes and topics are connected.
+   - An error message should be in the console saying that `points_clusterer` and `cluster_detector` nodes were not found (we will create the nodes later)
+   - Run `rqt` and explore the node graph (switch to `Nodes/Topics (all)`) - see how nodes and topics are connected.
       - Start from `/player`. It publishes `/lidar_center/points_raw` that goes to ground removal, and it publishes two topics: `points_no_ground` and `points_ground`, but nothing is using these - that is where your node should follow
 
    ![ros_graph](images/ros_graph.png)
 
-2. While still `roslaunch autoware_mini_practice_solutions practice_5.launch use_detection:=true` running investigate more closely the rviz visualizations
+2. While still `roslaunch autoware_mini_practice_solutions practice_5.launch use_detection:=true` running investigate more closely the RViz visualizations
    - It might be helpful at some point to stop the playback of the rosbag - press space in the console where the `practice_5.launch` was launched
    - Change Views from TopDownFollow to ThirdPersonFollow to better compare different stages in the point cloud processing
    - On the left, you can switch off and on some of the visualizations. Take your time to visualize and investigate:
       - Sensing / Points raw center - all points from the lidar scan
-      - Detection / Lidar / Center / Points center ground and no ground - results from ground removal
-      - You can compare points no ground and Points filtered to get an idea of how VoxelFilter changes the points
+      - Detection / Lidar / Center / Points, center ground and no ground - results from ground removal
+      - You can compare points the ground and Points filtered to get an idea of how VoxelFilter changes the points
    - There should be nothing under Points clustered (task 2) and Lidar detections (task 3), but these should be there at the end of this practice
 
 ![rviz](images/rviz.png)
@@ -58,15 +58,15 @@ Let's start by getting the message data in the callback and adding a simple prin
 
 ##### Instructions
 1. Create the node file `nodes/detection/points_clusterer.py` and create the typical class-based structure (you can use other existing nodes as examples)
-2. Create a subscriber and the callbck to get the points
+2. Create a subscriber and the callback to get the points
    - subscriber code: `rospy.Subscriber('points_filtered', PointCloud2, self.points_callback, queue_size=1, buff_size=2**24, tcp_nodelay=True)`, explanations:
-      - `queue_size=1` - queues are processed in the FIFO (First In First Out) principle. So, by setting it to `1`, we guarantee that there is always the latest message available and the messages are not queuing up. More about it [here](https://wiki.ros.org/rospy/Overview/Publishers%20and%20Subscribers#Publishing_to_a_topic).
-      - `buff_size=2**24` - increases the buffer size to ensure that the full message could be read at once
+      - `queue_size=1` - queues are processed in the FIFO (First In First Out) principle. So, by setting it to `1`, we guarantee that the latest message is always available and that the messages are not queuing up. More about it [here](https://wiki.ros.org/rospy/Overview/Publishers%20and%20Subscribers#Publishing_to_a_topic).
+      - `buff_size=2**24` - increases the buffer size to ensure that the full message can be read at once
    - Message type `PointCloud2` should come from [`sensor_msgs`](https://docs.ros.org/en/melodic/api/sensor_msgs/html/msg/PointCloud2.html)
-   - create the callback
+   - Create the callback
 3. Inside the callback, you should process the message as follows:
    - `data = numpify(msg)` - comes from [`ros_numpy`](https://github.com/eric-wieser/ros_numpy) library and provides tools for converting ROS messages to and from numpy arrays.
-   - `points = structured_to_unstructured(data[['x', 'y', 'z']], dtype=np.float32)` - this will convert structured Numpy arry to unstructured - [read more here](https://numpy.org/doc/stable/user/basics.rec.html).
+   - `points = structured_to_unstructured(data[['x', 'y', 'z']], dtype=np.float32)` - this will convert a structured Numpy array to unstructured - [read more here](https://numpy.org/doc/stable/user/basics.rec.html).
    - For the previous commands, you must add the following to imports (`msgify` and `unstructured_to_structured` will be used later).
 
    ```
@@ -103,10 +103,10 @@ We suggest using the DBSCAN algorithm, which is available from scikit-learn libr
    - parameters are [`cluster_epsilon` and `cluster_min_size`](config/detection.yaml#L23-L24) 
    - read in these private parameters (they are under the node name in yaml file, so `~` should be used inside the node in `get_param` to get these parameter values - [ROS name resolution](http://wiki.ros.org/Names#Resolving) 
    - **do not add the default value** then it will throw an error if it can't get the parameter value, and the node will exit, making it easier to spot the problem
-2. Import the clustering library and create the `self.clusterer` object using the dbscan algorithm in the class init and use the parameters 
-3. Do the clustering by using the `fit_predict()` method of DBSCAN.
+2. Import the clustering library and create the `self.clusterer` object using the dbscan algorithm in the class init, and use the parameters 
+3. Do the clustering using the `fit_predict()` method of DBSCAN.
    - It will return the label for the points (each cluster has its own label)
-   - add printing out the shape for the labels
+   - Add printing out the shape for the labels
 4. Let's also add an assert here that checks if there is the same number of points and labels. If not AssertionError with the message should be raised.
 
 ##### Validation
@@ -128,13 +128,13 @@ labels shape: (7119,)
 
 ## 4. Putting together points and clusters, publish results
 
-Now, we have an array of points and an array of labels for each point. Labels contain also a value of `-1`. This value represents noise points not assigned to any cluster because they are too sparse in space and away from other points. `points`  should be merged with `labels`, and noise points should be filtered out. From there on, it is just publishing them as PointCloud2 messages, that will serve as input to the `cluster_detector` node.
+Now, we have an array of points and an array of labels for each point. Labels also contain a value of `-1`. This value represents noise points not assigned to any cluster because they are too sparse in space and away from other points. `points`  should be merged with `labels`, and noise points should be filtered out. From there on, it is just publishing them as PointCloud2 messages, which will serve as input to the `cluster_detector` node.
 
-We want to publish the clustered point cloud so we can later analyze or debug the results of that node. If we would create one big node that would do the ground removal, cluster no ground points to different objects, calculate the convex hull, and just at the very end publish the final objects, then it would be very hard to find a problem if something is wrong with obstacle detection. Keeping code modular and easy to debug is why we try to create small specialized nodes in ROS.
+We want to publish the clustered point cloud so we can analyze or debug the results of that node later. If we were to create one big node that would do the ground removal, cluster no ground points to different objects, calculate the convex hull, and just at the very end publish the final objects, then it would be tough to find a problem if something is wrong with obstacle detection. We create small specialized nodes in ROS to keep code modular and easy to debug.
 
 ##### Instructions
-1. Concatenate points with labels and filter out noise points (label value `-1`). Hint: Previous shape printouts can be useful for figuring out how to stack and reshape them in order to put them together.
-2. Now we need to create a message from the array (opposite to what we did in the task 2.3)
+1. Concatenate points with labels and filter out noise points (label value `-1`). Hint: Previous shape printouts can be useful for figuring out how to stack and reshape them to assemble them.
+2. Now we need to create a message from the array (opposite to what we did in task 2.3)
    ```
    # convert labelled points to PointCloud2 format
    data = unstructured_to_structured(points_labeled, dtype=np.dtype([
@@ -150,7 +150,7 @@ We want to publish the clustered point cloud so we can later analyze or debug th
 3. Add to the `cluster_msg.header` a `stamp` and `frame_id`. These should be taken from the incoming message.
 4. Create a publisher for topic `points_clustered`
    - add params: `queue_size=1, tcp_nodelay=True` to the publisher.
-   - the publisher should be created before the subscriber. Otherwise, a subscriber might receive the data, and if the publisher is called from the callback, it might not be created yet, and we will have an error
+   - The publisher should be created before the subscriber. Otherwise, a subscriber might receive the data, and if the publisher is called from the callback, it might not be created yet, and we will have an error
 5. Add publishing the `cluster_msg` at the end of the callback
 6. Remove the previous printouts with the shapes
 
@@ -174,7 +174,7 @@ We want to publish the clustered point cloud so we can later analyze or debug th
 
 This node takes in clustered points from `points_clusterer` node and converts them into `autoware_mini/DetectedObject`and publishes as the `autoware_mini/DetectedObjectArray` in `detected_objects` topic.
 
-The template for node itself is available below, create the node under `node/detection/cluster_detector.py` as usual, and you are tasked to implement the contents in the `cluster_callback`.
+The template for the node itself is available below. Create the node under `node/detection/cluster_detector.py` as usual, and you are tasked to implement the contents in the `cluster_callback`.
 
 ```
 #!/usr/bin/env python3
@@ -224,12 +224,12 @@ if __name__ == '__main__':
 
 
 ##### Instructions
-1. Numpify message in the callback, and save it to `data`
+1. Numpify the message in the callback, and save it to `data`
 2. Convert `data` to ndarray called `points` with `dtype=np.float32`; use `structured_to_unstructured` as in the example above.
-   - add a printout in the code that prints out the shape of the `points` array and the first line for later validation (points before the transform)
+   - Add a printout in the code that prints out the shape of the `points` array and the first line for later validation (points before the transform)
 3. As a next step, you should verify if the message `frame_id` is not equal to `output_frame` (parameter) then it needs to be done. Basically, we want to transform all the objects to a `map` frame to apply tracking in a common frame.
-   - check the frames
-   - if necessary, fetch the transform - already existing `self.tf_listener = TransformListener(self.tf_buffer)` should be used
+   - Check the frames
+   - If necessary, fetch the transform - already existing `self.tf_listener = TransformListener(self.tf_buffer)` should be used
    - wrap it in `try...except` block, and if the error is thrown `logwarn` should be printed out and a callback should return
    - transform `timeout` parameter should also be considered
 
@@ -244,8 +244,8 @@ if __name__ == '__main__':
 4. To transform the `points`, the following steps are done
    - transform matrix is numpified and transposed (to match them in the `points` array)
    - `points` are turned into homogeneous coordinates
-   - dot product is used to transform the coordinates into needed `output_frame` via [transformation matrix](https://www.brainvoyager.com/bv/doc/UsersGuide/CoordsAndTransforms/SpatialTransformationMatrices.html) multiplication
-   - add again printouts in the code:
+   - The dot product is used to transform the coordinates into the needed `output_frame` via [transformation matrix](https://www.brainvoyager.com/bv/doc/UsersGuide/CoordsAndTransforms/SpatialTransformationMatrices.html) multiplication
+   - Add again printouts in the code:
       - print `tf_matrix`, `points` shape after the transform and the first line from `points` array
 
    ```
@@ -297,12 +297,12 @@ In this step, we need to create the detected objects. We suggest iterating over 
 # create mask
 mask = (labels == i)
 # select points for one object from an array using a mask
-# rows are selected using a binary mask and only first 3 columns are selected: x, y and z coordinates
+# rows are selected using a binary mask, and only the first 3 columns are selected: x, y, and z coordinates
 points3d = points[mask,:3]
 ```
 
 Additionally, for each object, we should:
-* skip all the clusters that have fewer points than parameter `min_cluster_size`
+* Skip all the clusters that have fewer points than the parameter `min_cluster_size`
 * calculate `centroid` - the mean of all the coordinates for that object
 * calculate `convex_hull` - cluster borders in 2d space, using only x and y coordinates.
 
@@ -311,23 +311,23 @@ Additionally, for each object, we should:
 2. Prepare [header](https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Header.html) - will be identical for each object and for the general message - detected object array
    - `stamp` should be taken from the incoming message header
    - `frame_id` should be the `output_frame` parameter
-3. Verify that there are objects (clusters) present, if there are no objects, then empty detected object array should be published
+3. Verify that there are objects (clusters) present. If there are no objects, then an empty detected object array should be published
 4. Loop over objects (clusters)
-   - check if it has enough points; otherwise, skip this object
-   - calculate the centroid for each object (mean of points coordinates) - the result should be written to `DetectedObject.position.x`, `DetectedObject.position.y` and `DetectedObject.position.z`
+   - Check if it has enough points; otherwise, skip this object
+   - calculate the centroid for each object (mean of points coordinates) - the result should be written to `DetectedObject.position.x`, `DetectedObject.position.y`, and `DetectedObject.position.z`
    - calculate convex_hull for each object (see code below) - the result should be written to `DetectedObject.convex_hull.polygon.points`:
-      - use only x and y coordinates, and create a shapely MultiPoint that has a function convex_hull (returns shapely polygon)
-      - convert polygon to list of [`geometry_msg/Point32`](https://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/Point32.html) and use centroids z coordinate for all polygon points
+      - Use only x and y coordinates, and create a shapely MultiPoint that has a function convex_hull (returns a shapely polygon)
+      - convert polygon to a flattened array of [`std_msgs/Float32`](https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Float32.html) and use centroids z coordinate for all polygon points
 
    ```
    # create convex hull
    points_2d = MultiPoint(points[mask,:2])
    hull = points_2d.convex_hull
-   convex_hull_points = [Point32(x, y, centroid_z) for x, y in hull.exterior.coords]
+   convex_hull_points = [a for hull in [[x, y, centroid_z] for x, y in hull.exterior.coords] for a in hull]
    ```
 
-5. Additionally, inside the loop, if you create the instance of `DetectedObject`, then
-   - use cluster label for `id`
+5. Additionally, inside the loop, if you create an instance of `DetectedObject`, then
+   - Use cluster label for `id`
    - also set the following values (in the following example `object = DetectedObject()`):
 
    ```
@@ -339,7 +339,7 @@ Additionally, for each object, we should:
    object.acceleration_reliable = False
    ```
 
-6. Publisher is already created. Use it to publish all the detected objects
+6. The publisher is already created. Use it to publish all the detected objects
 
 
 ##### Validation
@@ -359,4 +359,3 @@ Additionally, for each object, we should:
 In this tutorial, we used scikit learn implementation for the DBSCAN algorithm, but there are other and faster implementations available
 * cuml library: https://docs.rapids.ai/api/cuml/stable/api/#dbscan - uses GPU processing and should be fastest.
 * Intel(R) Extension for Scikit-learn: https://intel.github.io/scikit-learn-intelex/latest/index.html
-

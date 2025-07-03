@@ -11,7 +11,7 @@ In this practice, we will be using a map. Map is in [Lanelet2](https://github.co
 
 ### Expected outcome
 * General level understanding of the global planner tasks
-* Car can follow a path created by the global planner (from ego vehicle's current location to the selected destination on the map)
+* The car can follow a path created by the global planner (from the ego vehicle's current location to the selected destination on the map)
 
 
 ## 1. Create a global planner node and get the goal point
@@ -21,10 +21,10 @@ This node will make it possible to plan a path on the map. So, instead of loadin
 ##### Instructions
 1. Create a new file, `lanelet2_global_planner.py` under `nodes/planning/global`
 2. When creating the node, follow the class-based structure (you can take hints from previous practice or other provided nodes)
-3. Add the code for lanelet2 map loading; you can use the code from `src/helpers/lanelet2.py` in `autoware_mini` package as an example
-   - import necessary classes from the lanelet2 library
-   - read in necessary ros parameters from `localization.yaml` (see the function parameters in example code) and `lanelet2_map_name` coming from the launch file
-   - add the code that loads the lanelet2 map
+3. Add the code for lanelet2 map loading; you can use the code from `src/autoware_mini/lanelet2.py` in `autoware_mini` package as an example
+   - Import necessary classes from the lanelet2 library
+   - read in the necessary ROS parameters from `localization.yaml` (see the function parameters in example code) and `lanelet2_map_name` coming from the launch file
+   - Add the code that loads the lanelet2 map
 
 ```
 # All these imports from lanelet2 library should be sufficient
@@ -35,10 +35,10 @@ from lanelet2.core import BasicPoint2d
 from lanelet2.geometry import findNearest
 ```
 
-4. Create a subscriber and callback to get the goal point. Goal point will be entered on the map using a button in RViz with a purple arrow: `2D Nav Goal`
+4. Create a subscriber and a callback to get the goal point. Goal point will be entered on the map using a button in RViz with a purple arrow: `2D Nav Goal`
    - The goal point is published to a topic: `/move_base_simple/goal`, type: `geometry_msgs/PoseStamped`
-   - add [loginfo](https://wiki.ros.org/rospy_tutorials/Tutorials/Logging) message informing that the goal point has been received. 
-   - It is good practice to start with the node name that creates the log and it might be useful to print out also the coordinates, for example:
+   - Add a [loginfo](https://wiki.ros.org/rospy_tutorials/Tutorials/Logging) message informing us that the goal point has been received. 
+   - It is good practice to start with the node name that creates the log, and it might be helpful to print out also the coordinates, for example:
 
 ```
 # loginfo message about receiving the goal point
@@ -66,9 +66,9 @@ Output loginfo messages:
 
 Next, we will implement the logic of creating the global plan (path from start to goal point). We need the current pose and goal point to be available.
 
-To find a route with lanelet2 library traffic rules object and routing graph needs to be created first - [see example here](https://github.com/fzi-forschungszentrum-informatik/Lanelet2/blob/master/lanelet2_examples/scripts/tutorial.py#L215). For more thorough overview about [lanelet2 routing](https://github.com/fzi-forschungszentrum-informatik/Lanelet2/tree/master/lanelet2_routing). 
+To find a route with the lanelet2 library, traffic rules object and routing graph need to be created first - [see example here](https://github.com/fzi-forschungszentrum-informatik/Lanelet2/blob/master/lanelet2_examples/scripts/tutorial.py#L215). For a more thorough overview about [lanelet2 routing](https://github.com/fzi-forschungszentrum-informatik/Lanelet2/tree/master/lanelet2_routing). 
 
-The following code can be used to create necessary objects for routing:
+The following code can be used to create the necessary objects for routing:
 
 ```
 # traffic rules
@@ -99,11 +99,11 @@ route = self.graph.getRoute(start_lanelet, goal_lanelet, 0, True)
 
 # find shortest path
 path = route.shortestPath()
-# this returns LaneletSequence to a point where lane change would be necessary to continue
+# This returns LaneletSequence to a point where a lane change would be necessary to continue
 path_no_lane_change = path.getRemainingLane(start_lanelet)
 ```
 
-6. If no route has been found after entering the goal point return None and add a warning message `logwarn`
+6. If no route has been found after entering the goal point, return None and add a warning message `logwarn`
 7. Add a printout for the `path_no_lane_change`
 
 ##### Validation
@@ -123,11 +123,11 @@ LaneletSequence([ConstLanelet(403, ConstLineString3d(5005287, [ConstPoint3d(1000
 We now have a route (`path_no_lane_change` from code example) that consists of lanelets (LaneletSequence), but we need to convert it to message type `autoware_mini/Path` and publish it to a topic `global_path`, so the `pure_pursuit_follower` would be able to subscribe to it and do its job (path following).
 
 ##### Instructions
-1. Create a separate function that converts lanelet sequence to waypoints
-2. Previously acquired LaneletSequence (`path_no_lane_change`) is iterable, so use for loop to go over it and get the individual lanelets
+1. Create a separate function that converts a lanelet sequence to waypoints
+2. Previously acquired LaneletSequence (`path_no_lane_change`) is iterable, so use a for loop to go over it and get the individual lanelets
 3. Check if lanelets have the attribute `speed_ref`; if yes, use it for waypoint speed.
    - `speed_ref` is in **km/h**, but Waypoint message needs it in  **m/s**
-   - Add a parameter `speed_limit` to a launch file with a default value of 40km/h. None of the waypoint speeds in the path should exceed it!
+   - Add a parameter `speed_limit` to a launch file with a 40km/h default value. None of the waypoint speeds in the path should exceed it!
    - If lanelet does not have the `speed_ref`, then `speed_limit` should be used for its waypoints.
 
 ```
@@ -136,8 +136,8 @@ if 'speed_ref' in lanelet.attributes:
     speed = float(lanelet.attributes['speed_ref'])
 ```
 
-4. Waypoints should be extracted from `lanelet.centerline` (again it is iterable and gives you points where coordinates can be accessed with point.x, point.y etc.).
-hint: the end point of a lanelet and the start point of the following lanelet overlap - there should be no overlapping waypoints in the output path
+4. Waypoints should be extracted from `lanelet.centerline` (again, it is iterable and gives you points where coordinates can be accessed with point.x, point.y, etc.).
+Hint: The end point of a lanelet and the start point of the following lanelet overlap - there should be no overlapping waypoints in the output path
 
 ```
 # create Waypoint (from autoware_mini.msgs import Waypoint) and get the coordinats from lanelet.centerline points
@@ -149,10 +149,10 @@ waypoint.speed = speed
 ```
 
 5. Create a publisher and publish waypoints into the topic `global_path`; it should be [latched topic](https://wiki.ros.org/rospy/Overview/Publishers%20and%20Subscribers#rospy.Publisher_initialization). 
-   - create a special function for waypoint publishing that is called within the callback (after the lanelet sequence has been converted to waypoints). It makes the code more modular and has a better overview, and we might need to call it from another callback, as we will see later.
-   - `global_path` should be type autoware_mini/Path and its attribute `waypoints` is the list of Waypoints.
+   - Create a special function for waypoint publishing that is called within the callback (after the lanelet sequence has been converted to waypoints). It makes the code more modular and has a better overview, and we might need to call it from another callback, as we will see later.
+   - `global_path` should be type autoware_mini/Path, and its attribute `waypoints` is the list of Waypoints.
    - `frame_id` should come from `config/planning.yaml` file, parameter `output_frame`
-   - timestamp should be added
+   - The timestamp should be added
 
 ```
 path = Path()        
@@ -165,7 +165,7 @@ self.waypoints_pub.publish(path)
 ##### Validation
 * run `roslaunch autoware_mini_practice_solutions practice_4.launch lanelet2_map_name:=tartu_large.osm`
 * Everything should run without errors.
-* run `rqt_graph`; nodes should be now connected like this:
+* run `rqt_graph`; nodes should now be connected like this:
 
 ![node_graph_task](images/rqt_graph_task4.png)
 
@@ -178,44 +178,44 @@ self.waypoints_pub.publish(path)
 
 ## 4. Clear the path when the goal has been reached
 
-As we saw at the end of the previous task, the ego vehicle continued to drive with some chaotic behaviour after reaching the end of the path. Additionally, the path is kept although we have reached the destination. In this task, you should add functionality that will clear the path (publish empty path) once the destination has been reached.
+As we saw at the end of the previous task, the ego vehicle continued to drive with some chaotic behaviour after reaching the end of the path. Additionally, the path is kept even though we have reached the destination. In this task, you should add functionality that will clear the path (publish an empty path) once the destination has been reached.
 
 Publishing an empty path will cause problems for the follower, so you will need to update it.
 
 ##### Instructions
 
 1. There is a parameter in planning.yaml called `distance_to_goal_limit` - add getting it to the node.
-2. Use it to clear the path (publish empty path - empty list of waypoints) when the car is within that distance of the goal point.
+2. Use it to clear the path (publish an empty path - empty list of waypoints) when the car is within that distance of the goal point.
    - Choose the correct callback to place it.
    - Assumes that the goal point is stored
-3. Add a loginfo message that the goal has been reached when it happens and the path has been cleared.
+3. Add a loginfo message that the goal has been reached when it happens, and the path has been cleared.
 4. run `roslaunch autoware_mini_practice_solutions practice_4.launch lanelet2_map_name:=tartu_large.osm` - see what happens when the goal has been reached - observe the console output.
    - Make sure that your follower can handle an empty path message if it couldn't previously
-   - When empty path is received you need to stop the car and the only option is to use `vehicle_cmd`
+   - When an empty path is received, you need to stop the car, and the only option is to use `vehicle_cmd`
    - What should be published to the vehicle_cmd that will make a vehicle come to a stop?
 
 ##### Validation
 * run `roslaunch autoware_mini_practice_solutions practice_4.launch lanelet2_map_name:=tartu_large.osm`
 * Everything should run without errors.
-* When the car approaches the end of the path, there should be a log info message (goal reached) and the path should be cleared, and the vehicle should gradually come to a complete stop. It can't stop immediately because there are deceleration limits in the `bicycle_simulator`, so it will still drive past the goal point. Stopping at the correct place just before the path ends will be solved in the local planner.
+* When the car approaches the end of the path, there should be a log info message (goal reached), and the path should be cleared, and the vehicle should gradually come to a complete stop. It can't stop immediately because there are deceleration limits in the `bicycle_simulator`, so it will still drive past the goal point. Stopping at the correct place just before the path ends will be solved in the local planner.
 
 
 
 ## 5. One more thing
 
-Most probably you have noticed that the path end and goal point are not in sync. The problem starts when we use `findNearest()` to get the closest lanelet to the goal point, it returns the whole lanelet, and if the goal point is somewhere in the middle of the lanelet, then that is where the discrepancy comes from. 
+You may have noticed that the path end and goal point are not in sync. The problem starts when we use `findNearest()` to get the closest lanelet to the goal point. It returns the whole lanelet, and if the goal point is somewhere in the middle of the lanelet, then that is where the discrepancy comes from. 
 
 The following example illustrates the issue:
 * run: `roslaunch autoware_mini_practice_solutions practice_4.launch lanelet2_map_name:=tartu_large.osm`
-   - set the start location
-   - set the goal point
+   - Set the start location
+   - Set the goal point
    - Observe how the path is drawn and when it is cleared
 
 ![path_vs_goal](images/path_vs_goal.png)
 
 * We want to have the path end and goal point in the exact same location, because
-   - later, when the local planner takes care of stopping at the path end, it does not have the information about the user-selected goal point, so for the local planner the goal point is at the end of the path (last waypoint)
-   - The global planner knows the goal point entered by the user and uses this for path end check. And that is the source of confusion.
+   - Later, when the local planner takes care of stopping at the path end, it does not have the information about the user-selected goal point, so for the local planner, the goal point is at the end of the path (last waypoint)
+   - The global planner knows the goal point entered by the user and uses this for the path end check. And that is the source of confusion.
 
 This needs to be solved - we need to sync them. 
 
@@ -225,11 +225,11 @@ Find your solution to the problem. The solution is valid if the last waypoint of
 
 Three ideas that might help:
 1. The most straightforward solution is to accept that a full lanelet is added to the path and use the last waypoint from there to overwrite the goal point.
-2. Use the closest waypoint to a goal point as the path end and use that also for resetting the goal point location.
+2. Use the closest waypoint to a goal point as the path end and use it also for resetting the goal point location.
 3. Create a new waypoint - the closest point on the path to the user-selected goal point (shapely project and interpolate can be used) and use that as the path end and goal point.
 
 
 ##### Validation
 * Test your solution and verify that it works!
-* Clean the code, add comments, think about the readability of the code and pay attention to formatting
+* Clean the code, add comments, think about the readability of the code, and pay attention to formatting
 * When finished, please create `practice_4_solution.txt` file in the root directory of your repo containing a small description of your solution to the last task.

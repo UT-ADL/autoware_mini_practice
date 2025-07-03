@@ -2,30 +2,30 @@
 
 # Practice 6 - Local planning
 
-In this exercise, you will create a local planning module that focuses on extracting and refining a local path from a global path. The global path will be used to identify any **collision points** along the way by the object collision checker (and other) nodes, and the speed planner node will respond by safely decreasing the speed of the ego vehicle. **Collision points** are generalization of potential obstacles and any other conditions that require a modification of the target speed set by the global planner. In this practice you will learn how to process two types of collision points: object obstacles and goal point.
+In this exercise, you will create a local planning module that focuses on extracting and refining a local path from a global path. The global path will be used to identify any **collision points** along the way by the object collision checker (and other) nodes, and the speed planner node will respond by safely decreasing the speed of the ego vehicle. **Collision points** generalize potential obstacles and any other conditions that require a modification of the target speed set by the global planner. In this practice, you will learn how to process two types of collision points: object obstacles and goal points.
 
-For the safe and comfortable driving, the vehicle might need to come to a complete stop or follow another vehicle within a safe distance. To achieve this, the speed planner node will regulate the speed of the ego vehicle by calculating a suitable target velocity whenever new information about new collision points is received. This process is also known as longitudinal control, which is responsible for controlling the speed of an ego vehicle.
+For safe and comfortable driving, the vehicle might need to come to a complete stop or follow another vehicle within a safe distance. To achieve this, the speed planner node will regulate the speed of the ego vehicle by calculating a suitable target velocity whenever new information about new collision points is received. This process is also known as longitudinal control, which is responsible for controlling the speed of an ego vehicle.
 
-For this exercise, the local planner will not receive any lateral control tasks, such as swerving around an obstacle or planning a lane change. Lateral control, which is needed for following a pre-planned path, will remain the controller's responsibility. Throughout this exercise, the local planner node will only control speed.
+For this exercise, the local planner will not receive any lateral control tasks, such as swerving around an obstacle or planning a lane change. Lateral control, which is needed to follow a pre-planned path, will remain the controller's responsibility. Throughout this exercise, the local planner node will only control speed.
 
 #### Additional files
-- [launch/practice_6_bag.launch](launch/practice_6_bag.launch) - first launch file that reads data from bag that should run without errors at the end of the practice
-- [launch/practice_6_sim.launch](launch/practice_6_sim.launch) - second launch file that creates simulation that should run without errors at the end of the practice
+- [launch/practice_6_bag.launch](launch/practice_6_bag.launch) - first launch file that reads data from the bag, which should run without errors at the end of the practice
+- [launch/practice_6_sim.launch](launch/practice_6_sim.launch) - second launch file that creates a simulation that should run without errors at the end of the practice
 - [rviz/practice_6.rviz](rviz/practice_6.rviz) - RViz config file for visualizing the topics.
-- [config/planning.yaml](config/planning.yaml) - Updated config file, overwrite your local config file, don't forget to set your own custom values back.
+- [config/planning.yaml](config/planning.yaml) - Update the config file. Overwrite your local config file, and remember to set your custom values back.
 
 ### Expected outcome
-* Understanding the concept of collision points and how do you want to process different types of them
+* Understanding the concept of collision points and how you want to process different types of them
 * Understanding of how the ego vehicle reacts to the collision points (combination of distance and speed).
-* The local planner will take over the ego vehicle's longitudinal (speed) control by reacting to the obstacles and goal points and writing the target velocity to the local path. The controller will just take it from there and use it as is.
+* The local planner will take over the ego vehicle's longitudinal (speed) control by reacting to the obstacles and goal points and writing the target velocity to the local path. The controller will take it from there and use it as is.
 
 
 ## 1. Preparation
 
-The first step of local planner is creating a small node that will extract a small portion of global path that starts at our ego-vehicle position. This way we only need to consider collision points on this portion instead of the whole global path. We also need this local path to be published at the constant rate, when previously global path was published only when goal changes (think about why).
+The first step of the local planner is creating a small node that will extract a small portion of the global path that starts at our ego-vehicle position. This way, we only need to consider collision points on this portion instead of the whole global path. We also need this local path to be published at the constant rate, when previously, the global path was published only when the goal changed (think about why).
 
 1. Create a new file, `local_path_extractor.py` under `nodes/planning/local`
-2. copy the following code:
+2. Copy the following code:
 
  ```
 #!/usr/bin/env python3
@@ -173,14 +173,14 @@ if __name__ == '__main__':
 3. Scroll through the code and try to get a general understanding
    - What publishers and subscribers are created
    - What happens if the path is received (empty path vs not empty path)
-   - We use `PathWrapper` class from Autoware Mini to wrap the path and add some additional functionality to it, simplifying conversion to linestring
-   - We use ros [Timer](https://wiki.ros.org/rospy/Overview/Time#Timer) in order to have publisher publishing extracted small path at a specific rate (10 Hz by default) 
-   - In order to safely transfer data between asynchronous subscriber callbacks and timed publisher callback Python [Lock](https://docs.python.org/3/library/threading.html#lock-objects) is used:
+   - We reuse `PathWrapper` class from Autoware Mini to wrap the path and add some additional functionality to it, simplifying conversion to a linestring
+   - We use ros [Timer](https://wiki.ros.org/rospy/Overview/Time#Timer) to have the publisher publishing extracted small path at a specific rate (10 Hz by default) 
+   - To safely transfer data between asynchronous subscriber callbacks and timed publisher callback Python [Lock](https://docs.python.org/3/library/threading.html#lock-objects) is used:
 
 
 #### Validation
 * Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch`
-* After defining navigation goal for the vehicle: observe in the console, there is a repeated printout of your current pose from the function invoked by the timer that changes when you change the initial pose in Rviz:
+* After defining navigation goal for the vehicle: observe in the console, there is a repeated printout of your current pose from the function invoked by the Timer that changes when you change the initial pose in Rviz:
 
     ```
     Current Pose: 0.0 0.0 34.5195995355058
@@ -189,30 +189,30 @@ if __name__ == '__main__':
 
 ## 2. Extract and publish the local path
 
-The main logic of local path extraction is in `extract_waypoints` function. Your task is to calculate all the necessary input variables that are initiated as `None` in the `extract_local_path` function.
+The main logic of local path extraction is in `extract_waypoints` function. Your task is to calculate all the input variables initiated as `None` in the `extract_local_path` function.
 
 ##### Instructions
 
 1. Remove the `print` and `return` statements in the `extract_local_path` function.
-2. Find the ego vehicle location from `current_pose` message copied in the start of the function and initiate it as Shapely `Point` variable.
-3. Find the ego vehicle location on the global path as the distance from the global path start. Shapely `project` will find the closest point on the path and calculate the distance to it.
+2. Find the ego vehicle location from the `current_pose` message copied at the start of the function and initiate it as a Shapely `Point` variable.
+3. Find the ego vehicle location on the global path as the distance from the global path start. The Shapely `project` function will find the closest point on the path and calculate the distance to it.
 ```
 ego_distance_from_global_path_start = global_path.linestring.project(current_position)
 ```
-4. Calculate `global_path_distances` as an array of cumulative sum of the distances (first point = cumulative distance of 0.0). Use `numpy` function `np.cumsum()` to do that.
-5. Create interpolator `global_path_velocities_interpolator` using `interp1d` function from `scipy` library. Interpolator should use `global_path_distances` as x-coordinates and `global_path_velocities` as y-coordinates. This will the local path extractor to calculate precise target velocities for points that are not on the global path (mainly `current_pose` and `goal`).
-6. After you initialize all parameters, `extract_waypoints` function will be called to extract the local path. The function will return a list of waypoints that is published in `Path` message in `/planning/extracted_local_path` topic.
+4. Calculate `global_path_distances` as an array of the cumulative sum of the distances (first point = cumulative distance of 0.0). Use `numpy` function `np.cumsum()`.
+5. Create an interpolator `global_path_velocities_interpolator` using the `interp1d` function from the `scipy` library. Interpolator should use `global_path_distances` as x-coordinates and `global_path_velocities` as y-coordinates. This will use the local path extractor to calculate precise target velocities for points not on the global path (mainly `current_pose` and `goal`).
+6. After you initialize all parameters, `extract_waypoints` function will be called to extract the local path. The function will return a list of waypoints published in the `Path` message in the `/planning/extracted_local_path` topic.
 
 ##### Validation
 
 * Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch`
-* Place destination - path should appear, and ego vehicle starts to drive.
-* Place obstacles on the path - ego vehicle will ignore them.
+* Place destination - path should appear, and the ego vehicle starts to drive.
+* Place obstacles on the path (use `Publish point` button in RViz) - ego vehicle will ignore them.
 * Use `rostopic hz` to verify that `/control/vehicle_cmd` and `/planning/extracted_local_path` topics are published when the path is set and when the ego vehicle passes the goal point and the path is cleared.
 
 ## 3. Collision points creator node
 
-The next task is to initialize node that will create collision points for our local planner to react to. In this practice, we are interested in processing obstacles detected by the object detection and creating collision points accordingly. We will use a buffer around extracted local path to check if any object is within the buffered local path. Shapely [intersects](https://shapely.readthedocs.io/en/stable/reference/shapely.intersects.html) and [intersection](https://shapely.readthedocs.io/en/stable/reference/shapely.intersection.html) functions can be used for this purpose.
+The next task is to initialize the node that will create collision points for our local planner to react to. In this practice, we are interested in processing obstacles detected by the object detection and creating collision points accordingly. We will use a buffer around the extracted local path to check if any object is within the buffered local path. Shapely [intersects](https://shapely.readthedocs.io/en/stable/reference/shapely.intersects.html) and [intersection](https://shapely.readthedocs.io/en/stable/reference/shapely.intersection.html) functions can be used for this purpose.
 
 ![intersection_checking](images/obstacle_detection.png)
 
@@ -285,29 +285,29 @@ if __name__ == '__main__':
     node = CollisionPointsManager()
     node.run()
 ```
-3. Analyze the provided code, as always check the subscribed and published topics, and the ros parameters used in the code.
-4. Collision Points in Autoware Mini are represented as a `PointCloud2` type message, that can hold any structured data array. In our case, we will use the `DTYPE` defined at the beginning of the file. It contains the following fields:
+3. Analyze the provided code, as always, check the subscribed and published topics, and the ROS parameters used in the code.
+4. Collision Points in Autoware Mini are represented as a `PointCloud2` type message, which can hold any structured data array. In our case, we will use the `DTYPE` defined at the beginning of the file. It contains the following fields:
    - `x`, `y`, `z` - coordinates of the collision point
    - `vx`, `vy`, `vz` - velocity of the collision point
-   - `distance_to_stop` - distance at which car should stop before the collision point, in case of moving collision points, this is the distance the car will follow them at the same speed
-   - `deceleration_limit` - deceleration limit, different collision points types require different severity for deceleration (unused in these practices - set to `np.inf` for all categories)
-   - `category` - category of the object, in these practices we are interested mainly in four categories: `0` - not an obstacle, `1` - goal point, `2` - traffic light' stop line, `3` - static obstacle, `4` - moving obstacle. These are mainly used for visualization purposes, while 2 previous parameters are used for the main speed planner logic.
-5. Your task is to populate `path_callback` function that takes the extracted local path and detected objects and checks if any of the detected objects convex hulls are within the buffered local path. It then creates a `PointCloud2` message with the coordinates of the collision points - intersections, and publishes it.
-6. Start by creation Shapely `Linestring` from the local path message. Don't forget to check if it is empty and if the detected objects are empty as well. In either of these cases, publish an empty `PointCloud2` message with header used in the local path message.
-7. Buffer the local path `Linestring` using `buffer` method. The buffer width is defined in the `safety_box_width` parameter.
+   - `distance_to_stop` - distance at which the car should stop before the collision point, in case of moving collision points, this is the distance the car will follow them at the same speed
+   - `deceleration_limit` - deceleration limit, different collision point types require different severity for deceleration (unused in these practices - set to `np.inf` for all categories)
+   - `category` - category of the object, in these practices we are interested mainly in four categories: `0` - not an obstacle, `1` - goal point, `2` - traffic light' stop line, `3` - static obstacle, `4` - moving obstacle. These are mainly used for visualization purposes, while 2 previous two parameters are used for the main speed planner logic.
+5. Your task is to populate the `path_callback` function that takes the extracted local path and detected objects and checks if any of the detected objects' convex hulls are within the buffered local path. It then creates a `PointCloud2` message with the coordinates of the collision points - intersections, and publishes it.
+6. Start by creating a Shapely `Linestring` from the local path message. Don't forget to check if it is empty and if the detected objects are also empty. In either of these cases, publish an empty `PointCloud2` message with the header used in the local path message.
+7. Buffer the local path `Linestring` using the `buffer` method. The buffer width is defined in the `safety_box_width` parameter.
    - `cap_style` should be set to `flat` to avoid round corners
-   - use `prepare` to speed up the intersection calculations of the resulting buffer
-8. Iterate over detected objects and create Shapely `Polygon` from the object convex hull. Check if the resulting object intersects with the local path buffer.
-9. Every intersections' geometry point represents a collision point. Use `shapely.get_coordinates` to get the coordinates of the intersection results, and for every point add a corresponding entry to `collision_points` array.
+   - Use `shapely.prepare()` to speed up the intersection calculations of the resulting buffer
+8. Iterate over detected objects and create a Shapely `Polygon` from the object's convex hull. Check if the resulting object intersects with the local path buffer.
+9. Every intersection's geometry point represents a collision point. Use `shapely.get_coordinates` to get the coordinates of the intersection results, and for every point, add a corresponding entry to the `collision_points` array.
 
 ```
 for x, y in intersection_points:
     collision_points = np.append(collision_points, np.array([(x, y, obj.position.z, obj.velocity.x, obj.velocity.y, obj.velocity.z,
                                                                                   self.braking_safety_distance_obstacle, np.inf, 3 if object_speed < self.stopped_speed_limit else 4)], dtype=DTYPE))
 ```
-- Here we use normalized `obj_speed` comparison to `self.stopped_speed_limit` to determine if the object is moving or not. If the object is stopped, we set `category` to `3`, otherwise to `4`.
-10. Finally create a `PointCloud2` message using `msgify` function on our structured data of collision points and copying the local path header.
-11. For validation purposes, add a printout of the final `collision_points` array.
+- Here we use normalized `obj_speed` comparison to `self.stopped_speed_limit` to determine if the object is moving. If the object is stopped, we set `category` to `3`; otherwise, it is set to `4`.
+10. Finally, create a `PointCloud2` message using the `msgify` function on our structured data of collision points and copying the local path header.
+11. Add a printout of the final `collision_points` array for validation.
 
 ##### Validation
 
@@ -315,10 +315,10 @@ Part 1
 
 * Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch`
 * Local path should be exactly the width of the local path buffer
-* Place destination and experiment by placing the simulated obstacles on the path and see 
-   - how many collision points are printed out (try putting simulated obstacles on the edge of the local path buffer)
-   - how many points are printed for one obstacle (4, 5, 6) (does it change when it is on buffer edge?)
-* Hint: It might be useful to use `speed_limit` argument when running the launch file with low speed to be able to place the obstacles more conveniently. Try to achieve the polygons with different numbers of points.
+* Place the destination and experiment by placing the simulated obstacles on the path, and see 
+   - How many collision points are printed out (try putting simulated obstacles on the edge of the local path buffer)
+   - How many points are printed for one obstacle (4, 5, 6) (does it change when it is on the buffer edge?)
+* Hint: It might be useful to use `speed_limit` argument when running the launch file with low speed to place the obstacles more conveniently. Try to achieve the polygons with different numbers of points.
 * Verify that everything seems to work and is logical
 
 Part 2
@@ -335,11 +335,11 @@ Part 2
     ['x: -120.638954', 'y: -362.8749', 'z: 36.177357', 'vx: 0.0', 'vy: 0.0', 'vz: 0.0', 'distance_to_stop: 4.0', 'deceleration_limit: inf', 'category: 3']
     ['x: -120.533424', 'y: -362.6136', 'z: 36.177357', 'vx: 0.0', 'vy: 0.0', 'vz: 0.0', 'distance_to_stop: 4.0', 'deceleration_limit: inf', 'category: 3']
    ```
-* You might notice that velocity values are 0.0 for moving object(s) in bag replay. This is caused by launch file not using the tracker node. You can turn it on by specifying `use_tracking:=true` as option in the command line and compare the results. 
+* You might notice that velocity values are 0.0 for moving object(s) in the bag replay. This is caused by the launch file not using the tracker node. You can turn it on by specifying `use_tracking:=true` as an option in the command line and compare the results. 
 
 ## 4. Speed planner module
 
-Now that we have collision points of the obstacle we need to teach our local planner to reach to them. We can achieve this by reducing target velocity in comparison to original global path target velocity, if we calculate that collision is going to happen. For now we assume that collision points are static and do not have their own velocity. In this case, we can use the following formula for the target velocity calculation:
+Now that we have the collision points of the obstacle, we need to teach our local planner to reach them. We can achieve this by reducing the target velocity in comparison to the original global path target velocity if we calculate that a collision will happen. For now, we assume that collision points are static and do not have a velocity. In this case, we can use the following formula for the target velocity calculation:
 
 ![speed_formula](images/speed_formula.png)
 
@@ -384,7 +384,7 @@ class SpeedPlanner:
         self.braking_reaction_time = rospy.get_param("braking_reaction_time")
         synchronization_queue_size = rospy.get_param("~synchronization_queue_size")
         synchronization_slop = rospy.get_param("~synchronization_slop")
-        self.distance_to_car_front = rospy.get_param("current_pose_to_car_front")
+        self.distance_to_car_front = rospy.get_param("distance_to_car_front")
 
         # variables
         self.collision_points = None
@@ -461,15 +461,15 @@ if __name__ == '__main__':
     node = SpeedPlanner()
     node.run()
 ```
-3. As always, look through the code and try to understand what is going on. The most important part is the `collision_points_and_path_callback` callback, that instead of subscribing to one topic, instead synchronizes messages from two topics: `collision_points` and `extracted_local_path`, this is done using [approximate time synchronizer](https://wiki.ros.org/message_filters/ApproximateTime).
-4. We will use the same callback for all logic regarding new target speed calculation. First of all, check if the current pose and speed are available. If not, return from the function. If there are no collision points, we can just publish the received extracted local path to the final topic for local planner - `planning/local_path`.
+3. As always, look through the code and try to understand what is happening. The most important part is the `collision_points_and_path_callback` callback, which instead of subscribing to one topic, synchronizes messages from two topics: `collision_points` and `extracted_local_path`, this is done using [approximate time synchronizer](https://wiki.ros.org/message_filters/ApproximateTime).
+4. We will use the same callback for all logic regarding new target speed calculation. First of all, check if the current pose and speed are available. If not, return from the function. If there are no collision points, we can publish the received extracted local path to the final topic for the local planner - `planning/local_path`.
 5. Calculate distances along the extracted local path for all the received collision points (hint: reuse the logic from `local_path_extractor.py`).
-6. Calculate the new target velocity for each collision point. There might be several objects on the path with random order, so when calculating the target velocity for each, we need to find the one that causes the smallest target velocity. When considering only distances, it should be the closest object.
-    - use `self.default_deceleration` in the formula for the deceleration value.
-    - extracted local path always starts on ego vehicle position (`base_link` transform frame origin), so the distance between the collision point and ego vehicle is equal to the distance along the local path.
-    - the formula has a square root; guard it against having a negative value there. We can mitigate it by always having `0` target velocity. You can use the `max` operator here or later, `np.maximum`, if you are dealing with arrays and need an element-wise maximum.
-    - after calculating target velocities for all collision points, find minimum target velocity.
-    - after you obtain minimum velocity value, we need to overwrite local extracted path waypoints velocities with the new calculated minimum target velocity.
+6. Calculate the new target velocity for each collision point. There might be several objects on the path in a random order, so when calculating the target velocity for each, we need to find the one that causes the smallest target velocity. When considering only distances, it should be the closest object.
+    - Use `self.default_deceleration` in the formula for the deceleration value.
+    - The extracted local path always starts on the ego vehicle position (`base_link` transform frame origin). Hence, the distance between the collision point and the ego vehicle equals the distance along the local path.
+    - The formula has a square root; guard against having a negative value there. We can mitigate it by always having a `0` target velocity. You can use the `max` operator here or later, `np.maximum`, if you are dealing with arrays and need an element-wise maximum.
+    - After calculating target velocities for all collision points, find the minimum target velocity.
+    - After you obtain the minimum velocity value, we need to overwrite the local extracted path waypoints velocities with the new calculated minimum target velocity.
 ```
 for i, wp in enumerate(local_path_msg.waypoints):
     wp.speed = min(target_velocity, wp.speed)
@@ -496,7 +496,7 @@ self.local_path_pub.publish(path)
 * Place the goal point and add multiple objects on the path
 * The stopping point should appear just before the closest obstacle
 * Observe from the target velocity graph how it decreases when the ego vehicle approaches the object
-* Observe where ego vehicle actually stops - `base_link` location on the stopping point
+* Observe where the ego vehicle stops - `base_link` location on the stopping point
     ![rviz_obj_dists](images/rviz_objects_only_dist.png)
 * Run `roslaunch autoware_mini_practice_solutions practice_6_bag.launch` 
 * Plan the path along the driving direction and observe how the target velocity drops when the car turns in front of us.
@@ -506,15 +506,15 @@ self.local_path_pub.publish(path)
 ## 5. Add braking safety distance
 
 As you saw with the previous validation task, we drove into the collision point and over it until the `base_link` location reached the collision point's closest point. The target velocity calculation itself should have worked. We now need to correct where exactly we want to stop with the ego vehicle; for that, we modify our calculations of the distance between the ego vehicle and the collision point. We need to add a safety distance before the collision point, so that the car stops before it. This is done by two parameters:
-* `self.distance_to_car_front` - shifts the stopping point to the car front, factual length of the car from the `base_link` frame origin to the car nose.
-* `distance_to_stop` - creates an additional buffer zone before the obstacle. This parameter was already defined during creation of collision points previously, but not used until now. Every collision point has an associated distance value that is the distance at which the car nose should stop before the collision point. This value was set by `braking_safety_distance_obstacle` in the `collision_points_manager.py` node for the obstacle category collision points.
+* `self.distance_to_car_front` shifts the stopping point to the car front, and the factual length of the car is from the `base_link` frame origin to the car nose.
+* `distance_to_stop` - creates an additional buffer zone before the obstacle. This parameter was already defined during the creation of collision points previously, but has not been used until now. Every collision point has an associated distance value, the distance at which the car's nose should stop before the collision point. This value was set by `braking_safety_distance_obstacle` in the `collision_points_manager.py` node for the obstacle category collision points.
 
 ![braking_point_correction](images/braking_point_correction.png)
 
 
 ##### Instructions
 1. Correct the distance calculations using these two parameters so that the ego vehicle stops at the stopping point (red wall)
-2. Fix the stopping point distance pararmeter in the modified local path, so it is correctly set to account for the buffer zone before the obstacle (hint: it is measured from the `local_path` start)
+2. Fix the stopping point distance parameter in the modified local path, so it is correctly set to account for the buffer zone before the obstacle (hint: it is measured from the `local_path` start)
 3. Make sure the `closest_object_distance` also shows the correct value. When the ego vehicle stops with the front touching the stopping point, it should show the distance remaining to the obstacle and be very close to the `braking_safety_distance_obstacle` value.
 
 ##### Validation
@@ -527,19 +527,19 @@ As you saw with the previous validation task, we drove into the collision point 
 
 
 
-### 6. Calculate collision point speed
+### 6. Calculate the collision point speed
 
-There is a big difference if the collision point in front of us is static or dynamic. That is why we need to consider it when calculating a target velocity. Speed for the objects is given by the tracker node of Autoware Mini.
+There is a big difference if the collision point in front of us is static or dynamic. That is why we need to consider it when calculating a target velocity. The tracker node of Autoware Mini gives speed to the objects.
 
-Collision point speed is a norm of a velocity vector (`vx, vy, vz`). However, when calculating the target velocity for the ego vehicle, we can not take just the norm of the velocity vector and use that speed. It is essential first to align the speed direction with the direction our vehicle will be heading **at that point in local path**. We can project the velocity vector to this heading and obtain the speed in the same direction our car will be facing at that point. As such, this speed can be used in the target velocity calculation.
+Collision point speed is the norm of a velocity vector (`vx, vy, vz`). However, when calculating the target velocity for the ego vehicle, we can not take just the norm of the velocity vector and use that speed. It is essential first to align the speed and direction with the direction our vehicle will be heading **at that point in the local path**. We can project the velocity vector to this heading and obtain the speed in the same direction our car will be facing. As such, this speed can be used in the target velocity calculation.
 
 
 ##### Instructions
 1. Let's start by running `roslaunch autoware_mini_practice_solutions practice_6_bag.launch use_tracking:=true`
    - Before, all the objects had 0 speed in their labels because the tracking was switched off.
    - Observe how the speed for dynamic objects changes. Also, notice the yellow arrow - speed vector.
-2. For every collision point, use `get_heading_at_distance` function to get the heading angle at the distance of the collision point along the local path. Then use obtained heading angle to project the velocity vector using `project_vector_to_heading` function. This will give you the speed of the object in the same direction as the ego vehicle will be heading at that point.
-3. Collect resulting velocities to an array `collision_point_velocities` and add printout with object's actual speed (norm of the velocity) and speed relative to the heading
+2. For every collision point, use `get_heading_at_distance` function to get the heading angle at the distance of the collision point along the local path. Then, the obtained heading angle is used to project the velocity vector using the `project_vector_to_heading` function. This will give you the speed of the object in the same direction as the ego vehicle will be heading at that point.
+3. Collect resulting velocities to an array `collision_point_velocities` and add printout with the object's actual speed (norm of the velocity) and speed relative to the heading
 
 ##### Validation
 
@@ -563,18 +563,18 @@ Collision point speed is a norm of a velocity vector (`vx, vy, vz`). However, wh
 
 
 
-## 7. Account for collision point speed
+## 7. Account for the collision point speed
 
-Let's include the aligned colision points' speed in a target velocity calculation. Previously, we chose the closest collision point and calculated the target velocity. When considering also the speed of the objects, that doesn't always work. 
+Let's include the aligned collision points' speed in a target velocity calculation. Previously, we chose the closest collision point and calculated the target velocity. When considering also the speed of the objects, that doesn't always work. 
 
-Imagine a scenario where the ego vehicle is driving at 40km/h. There is another car driving 45km/h 20m ahead of the ego vehicle and a stationary object 40m ahead of the ego vehicle. Which of these two objects will cause a smaller target velocity for the ego vehicle? The answer is the stationary object 40m ahead. We need to apply brakes for this object from 40m away, but the 45km/h car is faster than the ego vehicle, and no brake is needed. This means that we need to calculate the target velocities for all objects and select the minimum target velocity and the object causing it instead of just considering the object with the minimum distance.
+Imagine a scenario where the ego vehicle drives at 40km/h. There is another car driving 45km/h 20m ahead of the ego vehicle, and a stationary object 40m ahead of the ego vehicle. Which of these two objects will cause a smaller target velocity for the ego vehicle? The answer is the stationary object 40m ahead. We need to apply the brakes for this object from 40m away, but the 45km/h car is faster than the ego vehicle, and no brake is needed. This means that we need to calculate the target velocities for all objects and select the minimum target velocity and the object causing it, instead of just considering the object with the minimum distance.
 
 ##### Instructions
 
 1. Calculate `target_velocities` - target velocity for all collision points
-    - We can use full formula now with `collision_point_distances` and `collision_point_velocities` - these will be arrays
-    - `self.default_deceleration` - is scalar and when combined in the formula with arrays the result will be an array
-2. Find the index of the collision point giving the lowest target velocity and use that to set correct values to following variables:
+    - We can use the full formula now with `collision_point_distances` and `collision_point_velocities` - these will be arrays
+    - `self.default_deceleration` - is a scalar, and when combined in the formula with arrays, the result will be an array
+2. Find the index of the collision point giving the lowest target velocity and use that to set correct values to the following variables:
     - `closest_object_distance`
     - `closest_object_velocity`
     - `stopping_point_distance`
@@ -583,7 +583,7 @@ Imagine a scenario where the ego vehicle is driving at 40km/h. There is another 
 
 * Run first `roslaunch autoware_mini_practice_solutions practice_6_bag.launch` and then with tracking `roslaunch autoware_mini_practice_solutions practice_6_bag.launch use_tracking:=true`
 * Set the destination further away on the path and observe how the target velocity changes when the car turns in front of us.
-    - the drop in target velocity is much smaller when the tracking is on (lower graphs in the image below)
+    - The drop in target velocity is much smaller when the tracking is on (lower graphs in the image below)
     - See that the `Closest obj spd` graph now has the values above 0
 
     ![comparison_tracking](images/comparison_tracking.png)
@@ -595,42 +595,42 @@ Imagine a scenario where the ego vehicle is driving at 40km/h. There is another 
 When driving behind a moving object, it is important to maintain a safe following distance. The higher the speed, the greater the distance should be. To achieve this, we will modify the distance between the ego vehicle and the obstacle and call it `target_distances`. This will be used for target velocity calculation.
 
 Imagine that we will subtract a part from the actual distance between the ego vehicle and the car. The effect would be as if the ego vehicle were closer to a car, and the calculated target velocity would also be smaller.
-* We will find the subtracted distance by `self.braking_reaction_time * collision_point_velocities` (this also only applies for collision points with category `4` - moving objects, so you can modify formula to `self.braking_reaction_time * collision_point_velocities * (collision_point_categories == 4)`).
-* resulting `target_distances` will be used to calculate `target_velocities`.
+* We will find the subtracted distance by `self.braking_reaction_time * collision_point_velocities`.
+* The resulting `target_distances` will be used to calculate `target_velocities`.
 
-There is one issue we need to address. Objects moving towards us have negative speeds (e.g. -40km/h).
-* it means that when calculating `target_distances` we need to take `abs()` of the speed: `self.braking_reaction_time * abs(collision_point_velocities) * (collision_point_categories == 4)`
-* and in the target velocity calculation, when done in a vectorized manner, we need to replace all negative speeds with 0 like this: `np.maximum(0, object_velocities)` because in the formula, they are squared, and we would lose the "direction" information.
+There is one issue we need to address. Objects moving towards us have negative speeds (e.g., -40 km/h).
+* it means that when calculating `target_distances` we need to take `abs()` of the speed: `self.braking_reaction_time * abs(collision_point_velocities)`
+* and in the target velocity calculation, when done in a vectorized manner, we need to replace all negative speeds with 0 like this: `np.maximum(0, collision_point_velocities)` because in the formula, they are squared, and we would lose the "direction" information.
 
 
 ##### Instructions
 
-1. Add calculation of `target_distances` and don't forget to add `abs()` and categories filtering for collision points velocities
-2. Adjust calculation for `target_velocities`
+1. Add calculation of `target_distances` and don't forget to add `abs()` for collision points velocities
+2. Adjust the calculation for `target_velocities`
     - replace previous distance with new `target_distances`
-    - add `object_velocities` to the calculation
+    - Add `collision_point_velocities` to the calculation
 
 ##### Validation
 * Run `roslaunch autoware_mini_practice_solutions practice_6_bag.launch use_tracking:=true`
 * Place the destination further away and observe if the target_velocity looks more logical
-* Verify that everything works without errors and also with static obstacles
-* run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch use_tracking:=true` place multiple obstacles, remove them and place them again. There should be no errors when doing this.
+* Verify that everything works without errors and with static obstacles
+* run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch use_tracking:=true` place multiple obstacles, remove them, and place them again. There should be no errors when doing this.
 
 
 
-## 9. Add goal point as a collision point!
+## 9. Add a goal point as a collision point!
 
 As the last step, we will add a goal point as a collision point. There are two things that we want to achieve:
-* Ego vehicle should decrease speed when approaching the goal point and should not overshoot it
-* We will use the same braking (deceleration) logic that we use for objects, goal points, and, later, stop lines (traffic lights).
+* The ego vehicle should decrease speed when approaching the goal point and should not overshoot it
+* We will use the same braking (deceleration) logic for objects, goal points, and, later, stop lines (traffic lights).
 * We do not need to change `simple_speed_planner.py` code, but we need to modify the `collision_points_manager.py` node to add the goal point as a collision point.
 
 
 ##### Instructions
 
-1. Add a new parameter to the init function of `collision_points_manager.py` node - `self.braking_safety_distance_goal` that you read to the node from the config file:
-2. Create a new subscriber that subscribes to the global path, and extracts goal waypoint from it, saving it in the parameter of the class.
-3. In the main `path_callback` function, add the processing of the goal waypoint as another collision point that manager publishes. 
+1. Add a new parameter to the init function of `collision_points_manager.py` node - `self.braking_safety_distance_goal` that you read from the config file:
+2. Create a new subscriber that subscribes to the global path and extracts the goal waypoint from it, saving it as a class parameter.
+3. In the main `path_callback` function, add the processing of the goal waypoint as another collision point that the manager publishes. 
    - Check if the goal point is within the buffered local path. (hint: use Shapely `touches` function)
    - Correctly initialize the `distance_to_stop=self.braking_safety_distance_goal` and `deceleration_limit=np.inf` values. The `category` should be set to `1` for the goal point.
 4. Modify your logic about handling the exceptions in `collision_points_manager` node - it should still publish collision points if either goal point is present, or obstacles are present, but not publish anything when there is no extracted local path.
@@ -638,7 +638,7 @@ As the last step, we will add a goal point as a collision point. There are two t
 ##### Validation
 
 * Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch`
-* Set the goal point - global path and local path should appear, and the ego vehicle should start to drive
+* Set the goal point - the global path and local path should appear, and the ego vehicle should start to drive
 * When approaching the goal point, a grey line (wall in 3d view) should appear at the end of the local path.
 * The target velocity should drop, and the ego vehicle should slow down and stop at the goal.
 * Try placing obstacles and removing them

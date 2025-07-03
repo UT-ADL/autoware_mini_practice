@@ -1,4 +1,4 @@
-current_pose_to_car_front: 4.0  # m
+distance_to_car_front: 4.0  # m
 braking_reaction_time: 1.6
 waypoint_interval: 1.0          # m
 default_acceleration: 1.0       # m/s2
