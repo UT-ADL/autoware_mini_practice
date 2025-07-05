@@ -33,8 +33,6 @@ collision_points_manager:
   braking_safety_distance_obstacle: 4     # m
   braking_safety_distance_goal: 0.1       # m
   braking_safety_distance_stopline: 2     # m
-  tfl_force_stop_speed_limit: 5.0         # km/h
-  tfl_maximum_deceleration: 2.8           # m/s2
 simple_speed_planner:
   synchronization_queue_size: 4
   synchronization_slop: 0.15
