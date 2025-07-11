@@ -91,7 +91,7 @@ Create the node `camera_traffic_light_detector` under `nodes/detection/`, copy t
             use_custom_origin = rospy.get_param("/localization/use_custom_origin")
             utm_origin_lat = rospy.get_param("/localization/utm_origin_lat")
             utm_origin_lon = rospy.get_param("/localization/utm_origin_lon")
-            lanelet2_map_name = rospy.get_param("~lanelet2_map_name")
+            lanelet2_map_path = rospy.get_param("~lanelet2_map_path")
 
             # global variables
             self.trafficlights = None
@@ -110,7 +110,7 @@ Create the node `camera_traffic_light_detector` under `nodes/detection/`, copy t
                 projector = UtmProjector(Origin(utm_origin_lat, utm_origin_lon), use_custom_origin, False)
             else:
                 raise RuntimeError('Only "utm" is supported for lanelet2 map loading')
-            lanelet2_map = load(lanelet2_map_name, projector)
+            lanelet2_map = load(lanelet2_map_path, projector)
 
             # Extract all stop lines and signals from the lanelet2 map
             all_stoplines = get_stoplines(lanelet2_map)
@@ -540,13 +540,14 @@ We now have the traffic light results, but we still need the logic in the local 
 
 ##### Instructions
 1. Look up in the `planning.yaml` config the parameters needed for the traffic light stop line collision points creation. 
-2. Create a subscriber to the `/detection/traffic_light_status` topic that copies and stores the results of the traffic light detection method.
+2. Copy the logic related to loading lanelet2 map and obtaining stoplines locations from this practice.
+3. Create a subscriber to the `/detection/traffic_light_status` topic that copies and stores the results of the traffic light detection method.
 ```
 rospy.Subscriber('/detection/traffic_light_status', TrafficLightResultArray, self.traffic_light_status_callback, queue_size=1, tcp_nodelay=True)
 ```
-3. Add corresponding logic for converting the traffic light status to collision points. The logic is similar to the one used for the goal point collision points: we need to find if the buffered local path intersects with the traffic light location, and if the traffic light status `stopline_statuses[stopline_id]` is red or yellow.
-4. Correctly initialize the collision points, setting the `collision_distance_to_stop = self.braking_safety_distance_stopline`, `deceleration_limit = np.inf`, and `category = 2`.
-5. Append the collision point to the array of collision points in the `collision_points_manager` node before publishing it as `PointCloud2` message.
+4. Add corresponding logic for converting the traffic light status to collision points. The logic is similar to the one used for the goal point collision points: we need to find if the buffered local path intersects with the traffic light location (obtained from loading lanelet2 map, intersection result will be in 2D space, and lacking Z-axis coordinate, setting it to 0 is fine, or you can think about more elegant solution), and cross-referenced with the traffic light status `stopline_statuses[stopline_id]` is red or yellow. 
+5. Correctly initialize the collision points, setting the `collision_distance_to_stop = self.braking_safety_distance_stopline`, `deceleration_limit = np.inf`, and `category = 2`.
+6. Append the collision point to the array of collision points in the `collision_points_manager` node before publishing it as `PointCloud2` message.
 
 ##### Validation
 * Run `roslaunch autoware_mini_practice_solutions practice_7.launch tfl_detector:=camera`

@@ -23,7 +23,7 @@ This node will make it possible to plan a path on the map. So, instead of loadin
 2. When creating the node, follow the class-based structure (you can take hints from previous practice or other provided nodes)
 3. Add the code for lanelet2 map loading; you can use the code from `src/autoware_mini/lanelet2.py` in `autoware_mini` package as an example
    - Import necessary classes from the lanelet2 library
-   - read in the necessary ROS parameters from `localization.yaml` (see the function parameters in example code) and `lanelet2_map_name` coming from the launch file
+   - read in the necessary ROS parameters from `localization.yaml` (see the function parameters in example code) and `lanelet2_map_path` coming from the launch file
    - Add the code that loads the lanelet2 map
 
 ```

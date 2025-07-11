@@ -23,7 +23,7 @@ waypoint_loader:
 
 lanelet2_global_planner:
   output_frame: map
-  distance_to_goal_limit: 5.0
+  distance_to_goal_limit: 4.0
 
 local_path_extractor:
   publish_rate: 10                        # Hz

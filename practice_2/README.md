@@ -59,7 +59,6 @@ Finally, we want to add some dependencies to our `package.xml` file to cover ref
   <exec_depend>pcl_ros</exec_depend>
   <exec_depend>topic_tools</exec_depend>
   <exec_depend>nodelet</exec_depend>
-  <exec_depend>common</exec_depend>
   <exec_depend>rviz</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
 ```

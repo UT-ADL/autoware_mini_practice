@@ -12,14 +12,14 @@
     <group ns="planning">
         <!-- Global planner -->
         <node pkg="autoware_mini_practice_solutions" type="lanelet2_global_planner.py" name="global_planner" output="screen" required="true" >
-            <param name="lanelet2_map_name"  value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
+            <param name="lanelet2_map_path"  value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
             <param name="speed_limit"  value="$(arg speed_limit)" />
         </node>
         <!-- Global path visualizer -->
         <node pkg="autoware_mini" type="global_path_visualizer.py" name="global_path_visualizer" output="screen" required="true" />
         <!-- Map visualizer -->
         <node pkg="autoware_mini" type="lanelet2_map_visualizer.py" name="lanelet2_map_visualizer" output="screen" required="true" >
-            <param name="lanelet2_map_name"  value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
+            <param name="lanelet2_map_path"  value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
             <param name="enable_auto_stop_checker" value="$(arg enable_auto_stop_checker)" />
         </node>
 
@@ -37,10 +37,21 @@
     <group ns="vehicle">
         <!-- Bicycle_model simulator -->
         <node pkg="autoware_mini" type="bicycle_simulation.py" name="bicycle_simulation" output="screen" required="true">
-            <param name="lanelet2_map_name" value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
+            <param name="lanelet2_map_path" value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
         </node>
 
         <rosparam command="load" file="$(find autoware_mini)/config/vehicle.yaml" />
+    </group>
+
+    <!-- Load static transforms -->
+    <group ns="vehicle_platform_frames">
+      <param name="robot_description" textfile="$(find autoware_mini)/config/urdf/lexus.urdf" />
+      <node pkg="robot_state_publisher" type="robot_state_publisher" name="vehicle_platform_frames_publisher" />
+    </group>
+
+    <group ns="lexus_model">
+    	<param name="robot_description" textfile="$(find autoware_mini)/config/urdf/lexus_model.urdf" />
+	    <node pkg="robot_state_publisher" type="robot_state_publisher" name="lexus_model_state_publisher" output="screen" required="true" />
     </group>
 
     <!-- Rviz -->

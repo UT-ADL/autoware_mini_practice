@@ -19,7 +19,7 @@ To do that, you have to finalize two nodes:
 #### Additional files
 - [launch/practice_5.launch](launch/practice_5.launch) - a launch file that should run without errors at the end of the practice
 - [rviz/practice_5.rviz](rviz/practice_5.rviz) - RViz config file for visualizing the topics.
-- [config/detection.yaml](config/detection.yaml) - parameters for our detection nodes
+- [config/detection.yaml](../../autoware_mini_practice_solutions/config/detection.yaml) - parameters for our detection nodes
 
 
 ### Expected outcome
@@ -100,7 +100,7 @@ We suggest using the DBSCAN algorithm, which is available from scikit-learn libr
 
 ##### Instructions:
 1. There are two parameters you need to get and use for the DBSCAN algorithm from `detection.yaml` file
-   - parameters are [`cluster_epsilon` and `cluster_min_size`](config/detection.yaml#L23-L24) 
+   - parameters are [`cluster_epsilon` and `cluster_min_size`](../../autoware_mini_practice_solutions/config/detection.yaml#L23-L24) 
    - read in these private parameters (they are under the node name in yaml file, so `~` should be used inside the node in `get_param` to get these parameter values - [ROS name resolution](http://wiki.ros.org/Names#Resolving) 
    - **do not add the default value** then it will throw an error if it can't get the parameter value, and the node will exit, making it easier to spot the problem
 2. Import the clustering library and create the `self.clusterer` object using the dbscan algorithm in the class init, and use the parameters 
@@ -314,7 +314,7 @@ Additionally, for each object, we should:
 3. Verify that there are objects (clusters) present. If there are no objects, then an empty detected object array should be published
 4. Loop over objects (clusters)
    - Check if it has enough points; otherwise, skip this object
-   - calculate the centroid for each object (mean of points coordinates) - the result should be written to `DetectedObject.position.x`, `DetectedObject.position.y`, and `DetectedObject.position.z`
+   - calculate the centroid for each object (mean of points coordinates) - the result should be written to `DetectedObject.centroid.x`, `DetectedObject.centroid.y`, and `DetectedObject.centroid.z`
    - calculate convex_hull for each object (see code below) - the result should be written to `DetectedObject.convex_hull.polygon.points`:
       - Use only x and y coordinates, and create a shapely MultiPoint that has a function convex_hull (returns a shapely polygon)
       - convert polygon to a flattened array of [`std_msgs/Float32`](https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Float32.html) and use centroids z coordinate for all polygon points

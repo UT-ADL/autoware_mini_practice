@@ -12,7 +12,7 @@ For this exercise, the local planner will not receive any lateral control tasks,
 - [launch/practice_6_bag.launch](launch/practice_6_bag.launch) - first launch file that reads data from the bag, which should run without errors at the end of the practice
 - [launch/practice_6_sim.launch](launch/practice_6_sim.launch) - second launch file that creates a simulation that should run without errors at the end of the practice
 - [rviz/practice_6.rviz](rviz/practice_6.rviz) - RViz config file for visualizing the topics.
-- [config/planning.yaml](config/planning.yaml) - Update the config file. Overwrite your local config file, and remember to set your custom values back.
+- [config/planning.yaml](../../autoware_mini_practice_solutions/config/planning.yaml) - Update the config file. Overwrite your local config file, and remember to set your custom values back.
 
 ### Expected outcome
 * Understanding the concept of collision points and how you want to process different types of them
@@ -79,12 +79,19 @@ class LocalPathExtractor:
                 self.global_path_velocities = None
             rospy.loginfo("%s - Empty global path received", rospy.get_name())
         else:
-            with self.lock:
-                self.global_path_xyz =  np.array([(waypoint.position.x, waypoint.position.y, waypoint.position.z) for waypoint in msg.waypoints])
-                self.global_path_linestring = shapely.LineString(self.global_path_xyz)
-                self.global_path_velocities = np.array([waypoint.speed for waypoint in msg.waypoints])
-            rospy.loginfo("%s - Global path received with %i waypoints", rospy.get_name(),
-                          len(self.global_path_xyz))
+            try:
+                with self.lock:
+                    self.global_path_xyz = np.array([(waypoint.position.x, waypoint.position.y, waypoint.position.z) for waypoint in msg.waypoints])
+                    self.global_path_linestring = shapely.LineString(self.global_path_xyz)
+                    self.global_path_velocities = np.array([waypoint.speed for waypoint in msg.waypoints])
+                rospy.loginfo("%s - Global path received with %i waypoints", rospy.get_name(),
+                              len(self.global_path_xyz))
+            except Exception as e:
+                self.global_path_xyz = None
+                self.global_path_linestring = None
+                self.global_path_velocities = None
+                rospy.logerr_throttle(10, "%s - Exception in callback: %s", rospy.get_name(),
+                                      traceback.format_exc())
 
     def extract_local_path(self, _):
         try:
@@ -297,12 +304,12 @@ if __name__ == '__main__':
 7. Buffer the local path `Linestring` using the `buffer` method. The buffer width is defined in the `safety_box_width` parameter.
    - `cap_style` should be set to `flat` to avoid round corners
    - Use `shapely.prepare()` to speed up the intersection calculations of the resulting buffer
-8. Iterate over detected objects and create a Shapely `Polygon` from the object's convex hull. Check if the resulting object intersects with the local path buffer.
+8. Iterate over detected objects and create a Shapely `Polygon` from the object's convex hull (don't forget that object convex hull data also has Z-axis coordinates that are unnecessary for Polygon). Check if the resulting object intersects with the local path buffer.
 9. Every intersection's geometry point represents a collision point. Use `shapely.get_coordinates` to get the coordinates of the intersection results, and for every point, add a corresponding entry to the `collision_points` array.
 
 ```
 for x, y in intersection_points:
-    collision_points = np.append(collision_points, np.array([(x, y, obj.position.z, obj.velocity.x, obj.velocity.y, obj.velocity.z,
+    collision_points = np.append(collision_points, np.array([(x, y, obj.centroid.z, obj.velocity.x, obj.velocity.y, obj.velocity.z,
                                                                                   self.braking_safety_distance_obstacle, np.inf, 3 if object_speed < self.stopped_speed_limit else 4)], dtype=DTYPE))
 ```
 - Here we use normalized `obj_speed` comparison to `self.stopped_speed_limit` to determine if the object is moving. If the object is stopped, we set `category` to `3`; otherwise, it is set to `4`.
@@ -631,7 +638,7 @@ As the last step, we will add a goal point as a collision point. There are two t
 1. Add a new parameter to the init function of `collision_points_manager.py` node - `self.braking_safety_distance_goal` that you read from the config file:
 2. Create a new subscriber that subscribes to the global path and extracts the goal waypoint from it, saving it as a class parameter.
 3. In the main `path_callback` function, add the processing of the goal waypoint as another collision point that the manager publishes. 
-   - Check if the goal point is within the buffered local path. (hint: use Shapely `touches` function)
+   - Check if the goal point is within the buffered local path. (hint: use Shapely `intersects` function on a slightly buffered end point)
    - Correctly initialize the `distance_to_stop=self.braking_safety_distance_goal` and `deceleration_limit=np.inf` values. The `category` should be set to `1` for the goal point.
 4. Modify your logic about handling the exceptions in `collision_points_manager` node - it should still publish collision points if either goal point is present, or obstacles are present, but not publish anything when there is no extracted local path.
 
