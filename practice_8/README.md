@@ -47,7 +47,7 @@ You are provided with final launch files and RViz config file [rviz/practice_8.r
     ```
 2. From `autoware_mini_practice_solutions` launch `practice_8_route_scenario.launch` to launch Carla simulator with Scenario Runner and the pre-set route scenario from `autoware_mini` package. As the route scenario is running too slow with all sensors and perception module enabled, the launch file will substitute perception modules from your autonomous driving framework with the ground truth readings provided by the CARLA simulator.
     ```
-    roslaunch autoware_mini_practice_solutions practice_8.launch use_scenario_runner:=true route_id:=1
+    roslaunch autoware_mini_practice_solutions practice_8_route_scenario.launch use_scenario_runner:=true route_id:=1
     ```
 3. Once the route scenario finishes, it will output final results (see below for example). Save the Simulation information and the Criteria information in "practice_8_simulation.txt".
 ![results_example](images/results_example.png)
