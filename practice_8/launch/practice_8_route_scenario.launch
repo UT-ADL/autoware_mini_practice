@@ -11,7 +11,6 @@
     <arg name="onnx_path"               default="$(find autoware_mini)/data/models/traffic_lights/tlr_model.onnx" doc="onnx model path" />
     <arg name="tracker"                 default="ema"                   if="$(eval detector != 'carla')" />
     <arg name="tracker"                 default="none"                  if="$(eval detector == 'carla')" />
-    <arg name="predictor"               default="none"                  doc="none" />
     <arg name='map_name'                default='tartu_demo'/>
     <arg name="follower"                default="pure_pursuit"          doc="pure_pursuit, stanley" />
     <arg name="waypoints_file"          default="waypoints_erm_utm_1m.csv" />
@@ -44,24 +43,6 @@
 
     <!-- Detection -->
     <group ns="detection">
-<!--         <group if="$(eval 'cluster' in detector)" ns="lidar"> -->
-<!--             <group ns="center"> -->
-<!--                 <node pkg="autoware_mini" type="naive_ground_removal.py" name="naive_ground_removal" output="screen" required="true"> -->
-<!--                     <remap from="points_raw" to="/lidar_center/points_raw" /> -->
-<!--                 </node> -->
-<!--             </group> -->
-
-<!--             <node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="screen" required="true" /> -->
-<!--             <node pkg="nodelet" type="nodelet" name="voxel_grid_filter" args="load pcl/VoxelGrid pcl_manager" output="screen" required="true"> -->
-<!--                 <remap from="~input" to="/detection/lidar/center/points_no_ground" /> -->
-<!--                 <remap from="~output" to="/detection/lidar/points_filtered" /> -->
-<!--             </node> -->
-
-<!--             <node pkg="autoware_mini_practice_solutions" type="points_clusterer.py" name="points_clusterer" output="screen" required="true" /> -->
-<!--             <node pkg="autoware_mini_practice_solutions" type="cluster_detector.py" name="cluster_detector" output="screen" required="true" /> -->
-
-<!--         </group> -->
-
         <!-- Obstacle detection -->
         <!-- Carla's ground truth objects -->
         <node if="$(eval detector=='carla')" pkg="autoware_mini" type="carla_detector.py" name="carla_detector" output="screen" required="true" />
@@ -78,10 +59,10 @@
                 <remap from="detected_objects" to="tracked_objects" />
                 <remap from="detected_objects_markers" to="tracked_objects_markers" />
             </node>
+             <node pkg="topic_tools" type="relay" args="tracked_objects final_objects" name="detected_objects_relay" output="screen" required="true" />
         </group>
         <node if="$(eval tracker=='none')" pkg="topic_tools" type="relay" args="detected_objects tracked_objects" name="detected_objects_relay" output="screen" required="true" />
 
-        <node if="$(eval predictor=='none')" pkg="topic_tools" type="relay" args="tracked_objects final_objects" name="tracked_objects_relay" output="screen" required="true" />
 
         <!-- Final objects visualizer -->
         <node pkg="autoware_mini" type="detected_objects_visualizer.py" name="final_objects_visualizer" output="screen" required="true">
