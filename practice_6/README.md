@@ -424,7 +424,7 @@ class SpeedPlanner:
     def collision_points_and_path_callback(self, collision_points_msg, local_path_msg):
         try:
             with self.lock:
-                collision_points = numpify(collision_points_msg)
+                collision_points = numpify(collision_points_msg) if len(collision_points_msg.data) > 0 else np.array([])
                 current_position = self.current_position
                 current_speed = self.current_speed
 
@@ -534,7 +534,7 @@ As you saw with the previous validation task, we drove into the collision point 
 
 
 
-### 6. Calculate the collision point speed
+## 6. Calculate the collision point speed
 
 There is a big difference if the collision point in front of us is static or dynamic. That is why we need to consider it when calculating a target velocity. The tracker node of Autoware Mini gives speed to the objects.
 
@@ -621,7 +621,7 @@ There is one issue we need to address. Objects moving towards us have negative s
 * Run `roslaunch autoware_mini_practice_solutions practice_6_bag.launch use_tracking:=true`
 * Place the destination further away and observe if the target_velocity looks more logical
 * Verify that everything works without errors and with static obstacles
-* run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch use_tracking:=true` place multiple obstacles, remove them, and place them again. There should be no errors when doing this.
+* run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch` place multiple obstacles, remove them, and place them again. There should be no errors when doing this.
 
 
 
@@ -640,7 +640,7 @@ As the last step, we will add a goal point as a collision point. There are two t
 3. In the main `path_callback` function, add the processing of the goal waypoint as another collision point that the manager publishes. 
    - Check if the goal point is within the buffered local path. (hint: use Shapely `intersects` function on a slightly buffered end point)
    - Correctly initialize the `distance_to_stop=self.braking_safety_distance_goal` and `deceleration_limit=np.inf` values. The `category` should be set to `1` for the goal point.
-4. Modify your logic about handling the exceptions in `collision_points_manager` node - it should still publish collision points if either goal point is present, or obstacles are present, but not publish anything when there is no extracted local path.
+4. Modify your logic about handling the exceptions in `collision_points_manager` node - it should still publish collision points if either goal point is present, or obstacles are present, and publish empty `PointCloud2` msg with the correct header when there is no extracted local path.
 
 ##### Validation
 
