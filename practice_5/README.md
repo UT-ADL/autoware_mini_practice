@@ -315,7 +315,7 @@ Additionally, for each object, we should:
 4. Loop over objects (clusters)
    - Check if it has enough points; otherwise, skip this object
    - calculate the centroid for each object (mean of points coordinates) - the result should be written to `DetectedObject.centroid.x`, `DetectedObject.centroid.y`, and `DetectedObject.centroid.z`
-   - calculate convex_hull for each object (see code below) - the result should be written to `DetectedObject.convex_hull.polygon.points`:
+   - calculate convex_hull for each object (see code below) - the result should be written to `DetectedObject.convex_hull`:
       - Use only x and y coordinates, and create a shapely MultiPoint that has a function convex_hull (returns a shapely polygon)
       - convert polygon to a flattened array of [`std_msgs/Float32`](https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Float32.html) and use centroids z coordinate for all polygon points
 
