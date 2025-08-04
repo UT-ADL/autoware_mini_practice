@@ -19,7 +19,7 @@ To do that, you have to finalize two nodes:
 #### Additional files
 - [launch/practice_5.launch](launch/practice_5.launch) - a launch file that should run without errors at the end of the practice
 - [rviz/practice_5.rviz](rviz/practice_5.rviz) - RViz config file for visualizing the topics.
-- [config/detection.yaml](../../autoware_mini_practice_solutions/config/detection.yaml) - parameters for our detection nodes
+- [config/detection.yaml](config/detection.yaml) - parameters for our detection nodes
 
 
 ### Expected outcome

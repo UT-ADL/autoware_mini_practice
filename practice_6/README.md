@@ -12,7 +12,7 @@ For this exercise, the local planner will not receive any lateral control tasks,
 - [launch/practice_6_bag.launch](launch/practice_6_bag.launch) - first launch file that reads data from the bag, which should run without errors at the end of the practice
 - [launch/practice_6_sim.launch](launch/practice_6_sim.launch) - second launch file that creates a simulation that should run without errors at the end of the practice
 - [rviz/practice_6.rviz](rviz/practice_6.rviz) - RViz config file for visualizing the topics.
-- [config/planning.yaml](../../autoware_mini_practice_solutions/config/planning.yaml) - Update the config file. Overwrite your local config file, and remember to set your custom values back.
+- [config/planning.yaml](config/planning.yaml) - Update the config file. Overwrite your local config file, and remember to set your custom values back.
 
 ### Expected outcome
 * Understanding the concept of collision points and how you want to process different types of them
@@ -107,13 +107,14 @@ class LocalPathExtractor:
             local_path = Path()
             local_path.header = current_pose.header
 
+            print('Current pose:', current_pose.pose.position.x, current_pose.pose.position.y, current_pose.pose.position.z)
+            self.local_path_pub.publish(local_path)
+            return
+
             if global_path_xyz is None:
                 self.local_path_pub.publish(local_path)
                 return
                
-            print('Current pose:', current_pose.pose.position.x, current_pose.pose.position.y, current_pose.pose.position.z)
-            return
-
             current_position = None
 
             ego_distance_from_global_path_start = None
@@ -200,13 +201,13 @@ The main logic of local path extraction is in `extract_waypoints` function. Your
 
 ##### Instructions
 
-1. Remove the `print` and `return` statements in the `extract_local_path` function.
+1. Remove the `print`, default publish and `return` statements in the `extract_local_path` function.
 2. Find the ego vehicle location from the `current_pose` message copied at the start of the function and initiate it as a Shapely `Point` variable.
 3. Find the ego vehicle location on the global path as the distance from the global path start. The Shapely `project` function will find the closest point on the path and calculate the distance to it.
 ```
-ego_distance_from_global_path_start = global_path.linestring.project(current_position)
+ego_distance_from_global_path_start = global_path_linestring.project(current_position)
 ```
-4. Calculate `global_path_distances` as an array of the cumulative sum of the distances (first point = cumulative distance of 0.0). Use `numpy` function `np.cumsum()`.
+4. Calculate `global_path_distances` as an array of the cumulative sum of the distances from `global_path_xyz[:,:2]` (first point = cumulative distance of 0.0). Use `numpy` function `np.cumsum()`. In our simplified local planner we ignore Z-axis coordinates and process the rest of the local planner calculations in 2D space.
 5. Create an interpolator `global_path_velocities_interpolator` using the `interp1d` function from the `scipy` library. Interpolator should use `global_path_distances` as x-coordinates and `global_path_velocities` as y-coordinates. This will use the local path extractor to calculate precise target velocities for points not on the global path (mainly `current_pose` and `goal`).
 6. After you initialize all parameters, `extract_waypoints` function will be called to extract the local path. The function will return a list of waypoints published in the `Path` message in the `/planning/extracted_local_path` topic.
 
@@ -301,7 +302,7 @@ if __name__ == '__main__':
    - `category` - category of the object, in these practices we are interested mainly in four categories: `0` - not an obstacle, `1` - goal point, `2` - traffic light' stop line, `3` - static obstacle, `4` - moving obstacle. These are mainly used for visualization purposes, while 2 previous two parameters are used for the main speed planner logic.
 5. Your task is to populate the `path_callback` function that takes the extracted local path and detected objects and checks if any of the detected objects' convex hulls are within the buffered local path. It then creates a `PointCloud2` message with the coordinates of the collision points - intersections, and publishes it.
 6. Start by creating a Shapely `Linestring` from the local path message. Don't forget to check if it is empty and if the detected objects are also empty. In either of these cases, publish an empty `PointCloud2` message with the header used in the local path message.
-7. Buffer the local path `Linestring` using the `buffer` method. The buffer width is defined in the `safety_box_width` parameter.
+7. Buffer the local path `Linestring` using the `buffer` method. The buffer width is defined in the `safety_box_width` parameter (use `safety_box_width / 2` in the function call itself).
    - `cap_style` should be set to `flat` to avoid round corners
    - Use `shapely.prepare()` to speed up the intersection calculations of the resulting buffer
 8. Iterate over detected objects and create a Shapely `Polygon` from the object's convex hull (don't forget that object convex hull data also has Z-axis coordinates that are unnecessary for Polygon). Check if the resulting object intersects with the local path buffer.
@@ -351,7 +352,7 @@ Now that we have the collision points of the obstacle, we need to teach our loca
 ![speed_formula](images/speed_formula.png)
 
 * `v` - target velocity
-* `v0` - object velocity
+* `v0` - object velocity, which is 0 for now based on assumption in this section that all objects are static
 * `a` - acceleration / deceleration
 * `s` - distance to object
 
@@ -379,7 +380,7 @@ from ros_numpy import numpify
 from autoware_mini.msg import Path, Log
 from sensor_msgs.msg import PointCloud2
 from geometry_msgs.msg import PoseStamped, TwistStamped, Vector3
-from helpers.geometry import project_vector_to_heading, get_distance_between_two_points_2d
+from autoware_mini.geometry import project_vector_to_heading, get_distance_between_two_points_2d
 
 
 class SpeedPlanner:
