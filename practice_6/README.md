@@ -213,7 +213,7 @@ ego_distance_from_global_path_start = global_path_linestring.project(current_pos
 
 ##### Validation
 
-* Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch`
+* Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch use_extracted_local_path:=true`
 * Place destination - path should appear, and the ego vehicle starts to drive.
 * Place obstacles on the path (use `Publish point` button in RViz) - ego vehicle will ignore them.
 * Use `rostopic hz` to verify that `/control/vehicle_cmd` and `/planning/extracted_local_path` topics are published when the path is set and when the ego vehicle passes the goal point and the path is cleared.

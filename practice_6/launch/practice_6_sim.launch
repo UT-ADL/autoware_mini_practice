@@ -11,6 +11,7 @@
     <arg name="use_tracking"            default="false" />
     <arg name="use_local_planner"       default="true" />
     <arg name="enable_auto_stop_checker" default="true"         doc="enable auto stop checker" />
+    <arg name="use_extracted_local_path" default="false"       doc="use local extracted path for controller" />
 
     <!-- Bicycle_model simulator -->
     <group ns="vehicle">
@@ -58,7 +59,10 @@
             <node pkg="autoware_mini_practice_solutions" type="simple_speed_planner.py" name="simple_speed_planner" output="screen" required="true" />
         </group>
         <!-- Local path visualizer -->
-        <node pkg="autoware_mini" type="local_path_visualizer.py" name="local_path_visualizer" output="screen" required="true"/>
+        <node pkg="autoware_mini" type="local_path_visualizer.py" name="local_path_visualizer" output="screen" required="true">
+            <remap unless="$(arg use_extracted_local_path)" from="local_path" to="/planning/local_path" />
+            <remap if="$(arg use_extracted_local_path)" from="local_path" to="/planning/extracted_local_path" />
+        </node>
 
         <!-- Config -->
         <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/planning.yaml" />
@@ -85,7 +89,8 @@
     <group ns="control">
         <!-- Follower -->
         <node pkg="autoware_mini_practice_solutions" type="pure_pursuit_follower.py" name="pure_pursuit_follower" output="screen" required="true" >
-            <remap from="path" to="/planning/local_path" />
+            <remap unless="$(arg use_extracted_local_path)" from="path" to="/planning/local_path" />
+            <remap if="$(arg use_extracted_local_path)" from="path" to="/planning/extracted_local_path" />
         </node>
 
         <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/control.yaml"/>
