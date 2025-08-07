@@ -61,7 +61,7 @@
             </node>
              <node pkg="topic_tools" type="relay" args="tracked_objects final_objects" name="detected_objects_relay" output="screen" required="true" />
         </group>
-        <node if="$(eval tracker=='none')" pkg="topic_tools" type="relay" args="detected_objects tracked_objects" name="detected_objects_relay" output="screen" required="true" />
+        <node if="$(eval tracker=='none')" pkg="topic_tools" type="relay" args="detected_objects final_objects" name="detected_objects_relay" output="screen" required="true" />
 
 
         <!-- Final objects visualizer -->
@@ -86,7 +86,7 @@
         <group if="$(eval 'camera' in tfl_detector)">
 
             <!-- Camera FL -->
-            <node pkg="autoware_mini_practice_solutions" type="camera_traffic_light_detector.py" name="camera_traffic_light_detector_left" output="screen" required="true" ns="camera_fl">
+            <node pkg="autoware_mini_practice_solutions" type="camera_traffic_light_detector.py" name="camera_traffic_light_detector" output="screen" required="true" ns="camera_fl">
                 <remap from="camera_info" to="/camera_fl/camera_info"/>
                 <remap from="image_raw" to="/camera_fl/image_raw"/>
                 <param name="lanelet2_map_path" value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
@@ -94,7 +94,7 @@
             </node>
 
             <!-- Camera FR -->
-            <node pkg="autoware_mini_practice_solutions" type="camera_traffic_light_detector.py" name="camera_traffic_light_detector_right" output="screen" required="true" ns="camera_fr">
+            <node pkg="autoware_mini_practice_solutions" type="camera_traffic_light_detector.py" name="camera_traffic_light_detector" output="screen" required="true" ns="camera_fr">
                 <remap from="camera_info" to="/camera_fr/camera_info"/>
                 <remap from="image_raw" to="/camera_fr/image_raw"/>
                 <param name="lanelet2_map_path" value="$(find autoware_mini)/data/maps/$(arg lanelet2_map_name)" />
@@ -149,7 +149,6 @@
 
         <!-- Config -->
         <rosparam command="load" file="$(find autoware_mini_practice_solutions)/config/planning.yaml" />
-
     </group>
 
     <!-- Control -->
