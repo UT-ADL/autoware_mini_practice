@@ -49,7 +49,13 @@ You are provided with final launch files and RViz config file [rviz/practice_8.r
     ```
     roslaunch autoware_mini_practice_solutions practice_8_route_scenario.launch use_scenario_runner:=true route_id:=1
     ```
-3. Once the route scenario finishes, it will output final results (see below for example). Save the Simulation information and the Criteria information in "practice_8_simulation.txt".
+3. You may notice that in the scenario when the first vehicle is cutting us from the left, there could be a collision. Navigate to the scenario file in the main autoware mini repository `tartu_demo.xml`, find the route with `id=1` and there:
+   - Find the first instance of scenario with type `VehicleFromTheLeft1`.
+   - Look at the trigger point coordinates, these coordinates are in the map frame and corresponds to the ego vehicle positions.
+   - In the RViz, in the "View" tab. you can change the target frame to "map" and then you will see the ego vehicle coordinates in the map frame.
+   - Change the trigger point coordinates in the scenario file so it triggers a bit earlier and doesn't cause a collision. (hint, you need to decrease slightly both `x` and `y` coordinates)
+4. Rerun the scenario and confirm that the vehicle is still cutting from left but the collision is avoided.
+5. Once the route scenario finishes, it will output final results (see below for example). Save the simulation information and the Criteria information in "practice_8_simulation.txt".
 ![results_example](images/results_example.png)
 
-4. Commit the results in your repo and send the video to the instructor if necessary.
+6. Commit the results in your repo and send the video to the instructor if necessary.
