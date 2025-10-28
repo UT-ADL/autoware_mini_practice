@@ -13,6 +13,7 @@ For this exercise, the local planner will not receive any lateral control tasks,
 - [launch/practice_6_sim.launch](launch/practice_6_sim.launch) - second launch file that creates a simulation that should run without errors at the end of the practice
 - [rviz/practice_6.rviz](rviz/practice_6.rviz) - RViz config file for visualizing the topics.
 - [config/planning.yaml](config/planning.yaml) - Update the config file. Overwrite your local config file, and remember to set your custom values back.
+- [nodes/planning/local/local_path_extractor.py](nodes/planning/local/local_path_extractor.py) - helper node for extracting fixed-length local path from the global path
 
 ### Expected outcome
 * Understanding the concept of collision points and how you want to process different types of them
@@ -22,205 +23,24 @@ For this exercise, the local planner will not receive any lateral control tasks,
 
 ## 1. Preparation
 
-The first step of the local planner is creating a small node that will extract a small portion of the global path that starts at our ego-vehicle position. This way, we only need to consider collision points on this portion instead of the whole global path. We also need this local path to be published at the constant rate, when previously, the global path was published only when the goal changed (think about why).
+The first module of the local planner is a small node that will extract a small fixed-length portion of the global path that starts at our ego-vehicle position. This way, we only need to consider collision points on this portion instead of the whole global path. We also need this local path to be published at the constant rate, when previously, the global path was published only when the goal changed (think about why). We provide this node code in the `local_path_extractor.py` file, but you need to copy it to your workspace and understand how it works.
 
-1. Create a new file, `local_path_extractor.py` under `nodes/planning/local`
-2. Copy the following code:
-
- ```
-#!/usr/bin/env python3
-
-import rospy
-import threading
-import traceback
-import shapely
-import math
-import numpy as np
-from scipy.interpolate import interp1d
-from autoware_mini.msg import Path, Waypoint
-from geometry_msgs.msg import PoseStamped
-
-class LocalPathExtractor:
-
-    def __init__(self):
-
-        # parameters
-        self.publish_rate = rospy.get_param("~publish_rate")
-        self.local_path_length = rospy.get_param("local_path_length")
-
-        # variables
-        self.current_pose = None
-        self.global_path_xyz = None
-        self.global_path_linestring = None
-        self.global_path_velocities = None
-        
-        # Lock for thread safety
-        self.lock = threading.Lock()
-
-        # timer
-        rospy.Timer(rospy.Duration(1 / self.publish_rate), self.extract_local_path)
-        
-        # publishers
-        self.local_path_pub = rospy.Publisher('extracted_local_path', Path, queue_size=1, tcp_nodelay=True)
-
-        # subscribers
-        rospy.Subscriber('/localization/current_pose', PoseStamped, self.current_pose_callback, queue_size=1,
-                         tcp_nodelay=True)
-        rospy.Subscriber('global_path', Path, self.global_path_callback, queue_size=None, tcp_nodelay=True)
-
-    def current_pose_callback(self, msg):
-        self.current_pose = msg
-
-    def global_path_callback(self, msg):
-        if len(msg.waypoints) == 0:
-            with self.lock:
-                self.global_path_xyz = None
-                self.global_path_linestring = None
-                self.global_path_velocities = None
-            rospy.loginfo("%s - Empty global path received", rospy.get_name())
-        else:
-            try:
-                with self.lock:
-                    self.global_path_xyz = np.array([(waypoint.position.x, waypoint.position.y, waypoint.position.z) for waypoint in msg.waypoints])
-                    self.global_path_linestring = shapely.LineString(self.global_path_xyz)
-                    self.global_path_velocities = np.array([waypoint.speed for waypoint in msg.waypoints])
-                rospy.loginfo("%s - Global path received with %i waypoints", rospy.get_name(),
-                              len(self.global_path_xyz))
-            except Exception as e:
-                self.global_path_xyz = None
-                self.global_path_linestring = None
-                self.global_path_velocities = None
-                rospy.logerr_throttle(10, "%s - Exception in callback: %s", rospy.get_name(),
-                                      traceback.format_exc())
-
-    def extract_local_path(self, _):
-        try:
-            with self.lock:
-                current_pose = self.current_pose
-                global_path_xyz = self.global_path_xyz
-                global_path_linestring = self.global_path_linestring
-                global_path_velocities = self.global_path_velocities
-
-            if current_pose is None:
-                return
-
-            local_path = Path()
-            local_path.header = current_pose.header
-
-            print('Current pose:', current_pose.pose.position.x, current_pose.pose.position.y, current_pose.pose.position.z)
-            self.local_path_pub.publish(local_path)
-            return
-
-            if global_path_xyz is None:
-                self.local_path_pub.publish(local_path)
-                return
-               
-            current_position = None
-
-            ego_distance_from_global_path_start = None
-
-            global_path_distances = None
-
-            global_path_velocities_interpolator = None
-
-            # extract local path using distances and velocities interpolator
-            local_path_waypoints = self.extract_waypoints(global_path_linestring, global_path_distances, ego_distance_from_global_path_start, self.local_path_length, global_path_velocities_interpolator)
-
-            local_path = Path()
-            local_path.header = current_pose.header
-            local_path.waypoints = local_path_waypoints
-
-            self.local_path_pub.publish(local_path)
-        except Exception as e:
-            rospy.logerr_throttle(10, "%s - Exception in callback: %s", rospy.get_name(), traceback.format_exc())
-
-
-    def extract_waypoints(self, global_path_linestring, global_path_distances, d_ego_from_path_start, local_path_length, global_path_velocities_interpolator):
-
-        # current position is projected at the end of the global path - goal reached
-        if math.isclose(d_ego_from_path_start, global_path_linestring.length):
-            return None
-
-        d_to_local_path_end = d_ego_from_path_start + local_path_length
-
-        # find index where distances are higher than ego_d_on_global_path
-        index_start = np.argmax(global_path_distances >= d_ego_from_path_start)
-        index_end = np.argmax(global_path_distances >= d_to_local_path_end)
-
-        # if end point of local_path is past the end of the global path (returns 0) then take index of last point
-        if index_end == 0:
-            index_end = len(global_path_linestring.coords) - 1
-
-        # create local path from global path add interpolated points at start and end, use sliced point coordinates in between
-        start_point = global_path_linestring.interpolate(d_ego_from_path_start)
-        end_point = global_path_linestring.interpolate(d_to_local_path_end)
-        local_path_xyz = start_point.coords[:] + list(global_path_linestring.coords[index_start:index_end]) + end_point.coords[:]
-        local_path_distances = [d_ego_from_path_start] + list(global_path_distances[index_start:index_end]) + [d_to_local_path_end]
-
-        local_path_waypoints = []
-        for i in range(len(local_path_xyz)):
-            waypoint = Waypoint()
-            waypoint.position.x = local_path_xyz[i][0]
-            waypoint.position.y = local_path_xyz[i][1]
-            waypoint.position.z = local_path_xyz[i][2]
-            waypoint.speed = global_path_velocities_interpolator(local_path_distances[i])
-            local_path_waypoints.append(waypoint)
-
-        return local_path_waypoints
-
-    def run(self):
-        rospy.spin()
-
-
-if __name__ == '__main__':
-    rospy.init_node('local_path_extractor')
-    node = LocalPathExtractor()
-    node.run()
-```
-
-3. Scroll through the code and try to get a general understanding
+Scroll through the code of the provided file and try to get a general understanding
    - What publishers and subscribers are created
    - What happens if the path is received (empty path vs not empty path)
-   - We reuse `PathWrapper` class from Autoware Mini to wrap the path and add some additional functionality to it, simplifying conversion to a linestring
    - We use ros [Timer](https://wiki.ros.org/rospy/Overview/Time#Timer) to have the publisher publishing extracted small path at a specific rate (10 Hz by default) 
    - To safely transfer data between asynchronous subscriber callbacks and timed publisher callback Python [Lock](https://docs.python.org/3/library/threading.html#lock-objects) is used:
 
 
 #### Validation
 * Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch`
-* After defining navigation goal for the vehicle: observe in the console, there is a repeated printout of your current pose from the function invoked by the Timer that changes when you change the initial pose in Rviz:
-
-    ```
-    Current Pose: 0.0 0.0 34.5195995355058
-    ```
-* Run `rostopic hz /planning/extracted_local_path` and verify that the topic is published at the correct rate (10Hz by default)
-
-## 2. Extract and publish the local path
-
-The main logic of local path extraction is in `extract_waypoints` function. Your task is to calculate all the input variables initiated as `None` in the `extract_local_path` function.
-
-##### Instructions
-
-1. Remove the `print`, default publish and `return` statements in the `extract_local_path` function.
-2. Find the ego vehicle location from the `current_pose` message copied at the start of the function and initiate it as a Shapely `Point` variable.
-3. Find the ego vehicle location on the global path as the distance from the global path start. The Shapely `project` function will find the closest point on the path and calculate the distance to it.
-```
-ego_distance_from_global_path_start = global_path_linestring.project(current_position)
-```
-4. Calculate `global_path_distances` as an array of the cumulative sum of the distances from `global_path_xyz[:,:2]` (first point = cumulative distance of 0.0). Use `numpy` function `np.cumsum()`. In our simplified local planner we ignore Z-axis coordinates and process the rest of the local planner calculations in 2D space.
-5. Create an interpolator `global_path_velocities_interpolator` using the `interp1d` function from the `scipy` library. Interpolator should use `global_path_distances` as x-coordinates and `global_path_velocities` as y-coordinates. This will use the local path extractor to calculate precise target velocities for points not on the global path (mainly `current_pose` and `goal`).
-6. After you initialize all parameters, `extract_waypoints` function will be called to extract the local path. The function will return a list of waypoints published in the `Path` message in the `/planning/extracted_local_path` topic.
-
-##### Validation
-
-* Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch use_extracted_local_path:=true`
-* Place destination - path should appear, and the ego vehicle starts to drive.
+* Place destination - path should appear, and the ego vehicle starts to drive. The visualization will also show the extracted local path in a different color from the global path.
 * Place obstacles on the path (use `Publish point` button in RViz) - ego vehicle will ignore them.
 * Use `rostopic hz` to verify that `/control/vehicle_cmd` and `/planning/extracted_local_path` topics are published when the path is set and when the ego vehicle passes the goal point and the path is cleared.
 
-## 3. Collision points creator node
+## 2. Collision points manager node
 
-The next task is to initialize the node that will create collision points for our local planner to react to. In this practice, we are interested in processing obstacles detected by the object detection and creating collision points accordingly. We will use a buffer around the extracted local path to check if any object is within the buffered local path. Shapely [intersects](https://shapely.readthedocs.io/en/stable/reference/shapely.intersects.html) and [intersection](https://shapely.readthedocs.io/en/stable/reference/shapely.intersection.html) functions can be used for this purpose.
+The main task of the practice is to create the node that will create and manage collision points for our local planner to react to. In this practice, we are interested in processing obstacles detected by the object detection and creating collision points accordingly. We will use a buffer around the extracted local path to check if any object is within the buffered local path. Shapely [intersects](https://shapely.readthedocs.io/en/stable/reference/shapely.intersects.html) and [intersection](https://shapely.readthedocs.io/en/stable/reference/shapely.intersection.html) functions can be used for this purpose.
 
 ![intersection_checking](images/obstacle_detection.png)
 
@@ -345,7 +165,7 @@ Part 2
    ```
 * You might notice that velocity values are 0.0 for moving object(s) in the bag replay. This is caused by the launch file not using the tracker node. You can turn it on by specifying `use_tracking:=true` as an option in the command line and compare the results. 
 
-## 4. Speed planner module
+## 3. Speed planner module
 
 Now that we have the collision points of the obstacle, we need to teach our local planner to reach them. We can achieve this by reducing the target velocity in comparison to the original global path target velocity if we calculate that a collision will happen. For now, we assume that collision points are static and do not have a velocity. In this case, we can use the following formula for the target velocity calculation:
 
@@ -511,7 +331,7 @@ self.local_path_pub.publish(path)
 
 
 
-## 5. Add braking safety distance
+## 4. Add braking safety distance
 
 As you saw with the previous validation task, we drove into the collision point and over it until the `base_link` location reached the collision point's closest point. The target velocity calculation itself should have worked. We now need to correct where exactly we want to stop with the ego vehicle; for that, we modify our calculations of the distance between the ego vehicle and the collision point. We need to add a safety distance before the collision point, so that the car stops before it. This is done by two parameters:
 * `self.distance_to_car_front` shifts the stopping point to the car front, and the factual length of the car is from the `base_link` frame origin to the car nose.
@@ -535,7 +355,7 @@ As you saw with the previous validation task, we drove into the collision point 
 
 
 
-## 6. Calculate the collision point speed
+## 5. Calculate the collision point speed
 
 There is a big difference if the collision point in front of us is static or dynamic. That is why we need to consider it when calculating a target velocity. The tracker node of Autoware Mini gives speed to the objects.
 
@@ -571,7 +391,7 @@ Collision point speed is the norm of a velocity vector (`vx, vy, vz`). However, 
 
 
 
-## 7. Account for the collision point speed
+## 6. Account for the collision point speed
 
 Let's include the aligned collision points' speed in a target velocity calculation. Previously, we chose the closest collision point and calculated the target velocity. When considering also the speed of the objects, that doesn't always work. 
 
@@ -583,9 +403,9 @@ Imagine a scenario where the ego vehicle drives at 40km/h. There is another car 
     - We can use the full formula now with `collision_point_distances` and `collision_point_velocities` - these will be arrays
     - `self.default_deceleration` - is a scalar, and when combined in the formula with arrays, the result will be an array
 2. Find the index of the collision point giving the lowest target velocity and use that to set correct values to the following variables:
-    - `closest_object_distance`
-    - `closest_object_velocity`
-    - `stopping_point_distance`
+    - `closest_object_distance` - should correspond to the distance of the collision point with the lowest target velocity from the nose of the car
+    - `closest_object_velocity` - should correspond to the velocity of the collision point with the lowest target velocity
+    - `stopping_point_distance` - should correspond to the distance from the start of the local path (equivalent to base link of the vehicle) to the stopping point before the collision point with the lowest target velocity
 
 ##### Validation
 
@@ -598,7 +418,7 @@ Imagine a scenario where the ego vehicle drives at 40km/h. There is another car 
 
 
 
-## 8. Modify target velocity
+## 7. Modify target velocity
 
 When driving behind a moving object, it is important to maintain a safe following distance. The higher the speed, the greater the distance should be. To achieve this, we will modify the distance between the ego vehicle and the obstacle and call it `target_distances`. This will be used for target velocity calculation.
 
@@ -626,7 +446,7 @@ There is one issue we need to address. Objects moving towards us have negative s
 
 
 
-## 9. Add a goal point as a collision point!
+## 8. Add a goal point as a collision point!
 
 As the last step, we will add a goal point as a collision point. There are two things that we want to achieve:
 * The ego vehicle should decrease speed when approaching the goal point and should not overshoot it
