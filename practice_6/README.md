@@ -33,7 +33,7 @@ Scroll through the code of the provided file and try to get a general understand
 
 
 #### Validation
-* Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch`
+* Run `roslaunch autoware_mini_practice_solutions practice_6_sim.launch use_extracted_local_path:=true`
 * Place destination - path should appear, and the ego vehicle starts to drive. The visualization will also show the extracted local path in a different color from the global path.
 * Place obstacles on the path (use `Publish point` button in RViz) - ego vehicle will ignore them.
 * Use `rostopic hz` to verify that `/control/vehicle_cmd` and `/planning/extracted_local_path` topics are published when the path is set and when the ego vehicle passes the goal point and the path is cleared.
