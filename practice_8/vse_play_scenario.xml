@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<scenarios>
+    <scenario name="tartu_demo_route" type="vse_play" town="tartu_demo">
+        <ego_vehicle x="-26.730026245117188" y="50.94211196899414" z="36.47785568237305" yaw="-2.0460205078125" model="vehicle.lexus.utlexus" rolename="ego_vehicle"/>
+        <weather cloudiness="30.0" precipitation="0.0" precipitation_deposits="0.0" wind_intensity="30.0" sun_azimuth_angle="360.0" sun_altitude_angle="60.0" fog_density="0.0" fog_distance="0.0" fog_falloff="0.20000000298023224" wetness="0.0" scattering_intensity="0.0" mie_scattering_scale="0.0" rayleigh_scattering_scale="0.03310000151395798" dust_storm="0.0"/>
+    </scenario>
+    <scenario name="tartu_demo_route_simple" type="vse_play" town="tartu_demo">
+        <ego_vehicle x="-26.730026245117188" y="50.94211196899414" z="36.569026947021484" yaw="-2.0460205078125" model="vehicle.lexus.utlexus" rolename="ego_vehicle"/>
+        <weather cloudiness="30.0" precipitation="0.0" precipitation_deposits="0.0" wind_intensity="30.0" sun_azimuth_angle="360.0" sun_altitude_angle="60.0" fog_density="0.0" fog_distance="0.0" fog_falloff="0.20000000298023224" wetness="0.0" scattering_intensity="0.0" mie_scattering_scale="0.0" rayleigh_scattering_scale="0.03310000151395798" dust_storm="0.0"/>
+    </scenario>
+</scenarios>

@@ -1,8 +1,8 @@
 [< Previous practice](../practice_7) -- [**Main Readme**](../README.md)
 
-# Practice 8 - CARLA simulator with Scenario Runner
+# Practice 8 - CARLA simulator with Visual Scenario Editor
 
-The task for this practice is to test your autonomous driving framework in the Carla simulator by driving through the demo lap and then evaluating on the automated Route Scenario. You will use all the following nodes representing different modules of the autonomous driving stack written during previous practices:
+The task for this practice is to test your autonomous driving framework in the Carla simulator by using Visual Scenario Editor. You will use all the following nodes representing different modules of the autonomous driving stack written during previous practices:
 
 * `localizer` - Localization module
 * `points_clusterer` and `cluster_detector` - Perception module
@@ -11,51 +11,33 @@ The task for this practice is to test your autonomous driving framework in the C
 * `local_path_extractor`,`collision_points_manager`, and `simple_speed_planner` - Local path extraction, collision points management, and speed planning modules
 * `pure_pursuit_follower` - Controller module
 
-You are provided with final launch files and RViz config file [rviz/practice_8.rviz](rviz/practice_8.launch) that utilizes all mentioned nodes and substitutes other useful nodes and CARLA simulator setup from `autoware_mini`. 
+You are provided with final launch files and RViz config file that utilizes all mentioned nodes and substitutes other useful nodes and CARLA simulator setup from `autoware_mini`. Additionally you are given an example scenario for Visual Scenario Editor that simulates obstacles, traffic lights and vehicle following on the part of the demo lap.
 
 #### Additional files
-- [practice_8_full_sensors.launch](launch/practice_8_full_sensors.launch) - Launch file that includes all modules from `autoware_mini_practice_solutions` package.
-- [practice_8_route_scenario.launch](launch/practice_8_route_scenario.launch) - Launch file that includes all modules from `autoware_mini_practice_solutions` package and launches Scenario Runner with pre-set route scenario, however, substitutes perception and traffic light detection modules with the ground truth readings provided by CARLA simulator.
+- [practice_8.launch](launch/practice_8.launch) - Launch file that includes all modules from `autoware_mini_practice_solutions` package and launches Scenario Runner with pre-set route scenario, however, substitutes perception and traffic light detection modules with the ground truth readings provided by CARLA simulator.
 - [rviz/practice_8.rviz](rviz/practice_8.rviz) - RViz config file for visualizing of the topics.
+- [tartu_demo_route_simple.json](tartu_demo_route_simple.json) - Example scenario for Visual Scenario Editor that simulates obstacles, traffic lights and vehicle following on the part of the demo lap. Save it to your Visual Scenario Editor installer folder under `examples/tartu_demo` subfolder.
+- [vse_play_scenario.xml](vse_play_scenario.xml) - Launch file for Visual Scenario Editor to run the example scenario. Save it to your Visual Scenario Editor installer folder under `examples/tartu_demo` subfolder.
 
 ![rviz_carla](images/rviz_carla.png)
 
-## 1. Run the CARLA simulation and record the demo lap
+## 1. Run the example simple VSE scenario
 
-[Launching CARLA simulation](https://github.com/UT-ADL/autoware_mini?tab=readme-ov-file#launching-carla-simulation).
+1. Launch Visual Scenario Editor. 
+2. Open the example scenario `tartu_demo_route_simple`. The scenario contains preset ego-vehicle position, four pedestrians, and one vehicle down the road that your ego-vehicle should follow.
+3. Press 'Play' in the upper-right corner and experiment with scenario in the manual control mode. Use arrow keys to control the ego-vehicle. Explore how pedestrians and the vehicle behave in the scenario.
+4. Reset scenario and now run it together with your autonomous driving framework. To achieve this, first run the following command, wait until RViz initializes and then press 'Play' in Visual Scenario Editor.
+    ```
+    roslaunch autoware_mini_practice_solutions practice_8.launch use_scenario_runner:=true
+    ```
+5. Once the position of the vehicle in the RViz aligns with the position of the ego-vehicle in Visual Scenario Editor, set the destination down the road in RViz. Your autonomous driving framework should now control the ego-vehicle. 
+6. Check if the ego-vehicle successfully reacts to pedestrian obstacles and follows the vehicle down the road. Did everything succeed? If not, try to adjust the obstacles positions and/or triggers in the Visual Scenario Editor and try again (hint: original scenario assumes that framework has obstacle motion prediction, while yours doesn't have it, so you will need triggers to be set a bit earlier).
+7. Experiment and ensure that your framework is working correctly and behaves safely in the scenario. 
 
-1. Run Carla. 
-    ```
-    $CARLA_ROOT/CarlaUE4.sh -prefernvidia -quality-level=Low -RenderOffScreen
-    ```
-2. From `autoware_mini_practice_solutions` launch `practice_8_full_sensors.launch`. The launch file will initialize all the nodes from your autonomous driving framework and connect to the CARLA simulator sensors that your perception modules will process.
-    ```
-    roslaunch autoware_mini_practice_solutions practice_8_full_sensors.launch tfl_detector:=camera detector:=cluster
-    ```
-3. Drive through the Demo lap
-    - [Map of the demo lap](https://adl.cs.ut.ee/lab/demo-track)
+## 2. Modify the example VSE scenario
 
-4. If you cannot demonstrate it in person at the practice session, please record the video and send the link.
-    - You can use [SimpleScreenRecorder](https://www.geeksforgeeks.org/how-to-install-simplescreenrecorder-ubuntu/)
-    - As Carla tends to run very slowly on old hardware, you can adjust the recording framerate to be smaller, like 5Hz (or even less). Then the video won't be so big.
-   
-## 2. Run the CARLA simulation with Scenario Runner and evaluate your framework
-
-1. Re-run Carla. It is good practice to restart the Carla simulator between every execution of the launch files.
-    ```
-    $CARLA_ROOT/CarlaUE4.sh -prefernvidia -quality-level=Low -RenderOffScreen
-    ```
-2. From `autoware_mini_practice_solutions` launch `practice_8_route_scenario.launch` to launch Carla simulator with Scenario Runner and the pre-set route scenario from `autoware_mini` package. As the route scenario is running too slow with all sensors and perception module enabled, the launch file will substitute perception modules from your autonomous driving framework with the ground truth readings provided by the CARLA simulator.
-    ```
-    roslaunch autoware_mini_practice_solutions practice_8_route_scenario.launch use_scenario_runner:=true route_id:=1
-    ```
-3. You may notice that in the scenario when the first vehicle is cutting us from the left, there could be a collision. Navigate to the scenario file in the main autoware mini repository `tartu_demo.xml`, find the route with `id=1` and there:
-   - Find the first instance of scenario with type `VehicleFromTheLeft1`.
-   - Look at the trigger point coordinates, these coordinates are in the map frame and corresponds to the ego vehicle positions.
-   - In the RViz, in the "View" tab. you can change the target frame to "map" and then you will see the ego vehicle coordinates in the map frame.
-   - Change the trigger point coordinates in the scenario file so it triggers a bit earlier and doesn't cause a collision. (hint, you need to decrease slightly both `x` and `y` coordinates)
-4. Rerun the scenario and confirm that the vehicle is still cutting from left but the collision is avoided.
-5. Once the route scenario finishes, it will output final results (see below for example). Save the simulation information and the Criteria information in "practice_8_simulation.txt".
-![results_example](images/results_example.png)
-
-6. Commit the results in your repo and send the video to the instructor if necessary.
+1. Once the framework passes the example scenario, your task is to modify the scenario to make it more challenging. You can add more pedestrians, vehicles, change their positions, speeds, and triggers.
+2. Add at least three pedestrians crossing the road in front of the ego-vehicle at different distances. Add at least one vehicle that will cut in front of the ego-vehicle from another lane and one bus stop with a bus that will block the ego-vehicle's lane. You can experiment with the traffic triggers.
+3. Ensure that the modified scenario is compact and the route is limited from the Delta building to the bridge crossing near Riia street. 
+4. Once you are satisfied and your framework successfully handles the modified scenario, save it to a new JSON file named `tartu_demo_route_practice.json`.
+5. Commit the final tunings of your framework in your repo and include the modified scenario JSON file and `vse_play_scenario.xml` launch file in the root of your repository.
